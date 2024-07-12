@@ -7,9 +7,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <esp_task_wdt.h>
+#include <core/lv_disp.h>
 #include <core/lv_obj.h>
 #include <driver/spi_common.h>
 #include <hal/lv_hal_disp.h>
+#include <widgets/lv_label.h>
+
 #include "driver/i2c.h"
 #include "esp_log.h"
 // 初始化i2c
@@ -163,20 +166,31 @@ void app_main(void) {
     esp_lcd_panel_disp_on_off(panel, true);
     gpio_set_level(LCD_BL, 1);
 
+
+    // 初始化lvgl
     lv_init();
     lv_color_t *buf1 = heap_caps_malloc(LCD_H_RES * 20 * sizeof(lv_color_t), MALLOC_CAP_DMA);
-    assert(buf1);
-    lv_color_t *buf2 = heap_caps_malloc(LCD_H_RES * 20 * sizeof(lv_color_t), MALLOC_CAP_DMA);
-    assert(buf2);
+    // assert(buf1);
+    // lv_color_t *buf2 = heap_caps_malloc(LCD_H_RES * 20 * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    // assert(buf2);
+    lv_disp_draw_buf_init(&disp_buf, buf1, NULL, LCD_H_RES * 20 * sizeof(lv_color_t));
     lv_disp_drv_init(&disp_drv);
-
     disp_drv.hor_res = LCD_H_RES;
     disp_drv.ver_res = LCD_V_RES;
     disp_drv.flush_cb = lvgl_flush_cb;
     disp_drv.draw_buf = &disp_buf;
     disp_drv.user_data = panel;
-    lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+    lv_disp_drv_register(&disp_drv);
+    // lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
 
+    // 创建主屏幕
+    lv_obj_t *scr = lv_scr_act();
+    lv_obj_clean(scr);
+
+    // 创建一个标签
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "Hello, World!");
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0); // 将标签居中对齐
 }
 
 
