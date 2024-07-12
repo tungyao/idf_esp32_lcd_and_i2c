@@ -1,0 +1,4 @@
+dependencies:
+  espressif/aht20: "^0.1.0~1"
+  idf: ">=4.4"
+  lvgl/lvgl: "~8.3.0"
