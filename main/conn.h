@@ -1,13 +1,16 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 static const char *CONN_TAG = "conn";
-
+static QueueHandle_t key_queue = NULL;
 #define EX_UART_NUM UART_NUM_0
 #define PATTERN_CHR_NUM    (3)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
+
+
+
+#define EXAMPLE_WIFI_SSID "aaaaa"
+#define EXAMPLE_WIFI_PASS "bbbbb"
 
 
 #define BUF_SIZE (1024)
@@ -20,10 +23,85 @@ static QueueHandle_t uart0_queue;
 
 #define LONG_PRESS_TIME 3000
 
+static void IRAM_ATTR key_isr_handler(void *arg);
 
 void conn_keys_init();
 
 // 监听一个按键
-bool listen_config_key();
+void listen_config_key();
 
-void get_uart_data();
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+
+#include "lwip/err.h"
+#include "lwip/sys.h"
+
+
+#define EXAMPLE_ESP_WIFI_SSID      "ssid"
+#define EXAMPLE_ESP_WIFI_PASS      "password"
+#define EXAMPLE_ESP_MAXIMUM_RETRY  10
+
+#if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
+#define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HUNT_AND_PECK
+#define EXAMPLE_H2E_IDENTIFIER ""
+#elif CONFIG_ESP_WPA3_SAE_PWE_HASH_TO_ELEMENT
+#define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HASH_TO_ELEMENT
+#define EXAMPLE_H2E_IDENTIFIER CONFIG_ESP_WIFI_PW_ID
+#elif CONFIG_ESP_WPA3_SAE_PWE_BOTH
+#define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH
+#define EXAMPLE_H2E_IDENTIFIER CONFIG_ESP_WIFI_PW_ID
+#endif
+#if CONFIG_ESP_WIFI_AUTH_OPEN
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_OPEN
+#elif CONFIG_ESP_WIFI_AUTH_WEP
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WEP
+#elif CONFIG_ESP_WIFI_AUTH_WPA_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA2_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA_WPA2_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA_WPA2_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA3_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA3_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA2_WPA3_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_WPA3_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WAPI_PSK
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WAPI_PSK
+#endif
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
+/* The event group allows multiple bits for each event, but we only care about two events:
+ * - we are connected to the AP with an IP
+ * - we failed to connect after the maximum amount of retries */
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
+static int s_retry_num = 0;
+
+static void event_handler(void *arg, esp_event_base_t event_base,
+                          int32_t event_id, void *event_data);
+
+void wifi_init_sta(void);
+
+
+// MQTT
+
+#include "mqtt_client.h"
+#include "esp_log.h"
+
+static const char *MQTT_BROKER = "192.168.100.186";
+static const int MQTT_PORT = 1883; // MQTT端口，默认为1883
+
+static void log_error_if_nonzero(const char *message, int error_code);
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+// MQTT事件处理函数
+void mqtt_app_start();

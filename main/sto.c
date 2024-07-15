@@ -4,7 +4,7 @@
 
 #include "sto.h"
 
-void sto_init(){
+void sto_init() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -14,8 +14,7 @@ void sto_init(){
 }
 
 
-void store_data()
-{
+void store_data(char *key,char *data) {
     esp_err_t err;
 
     // 打开命名空间
@@ -26,53 +25,52 @@ void store_data()
     }
 
     // 设置数据
-    const char* data = "Hello, NVS!";
-    err = nvs_set_str(my_nvs_handle, "greeting", data);
+    // const char* data = "Hello, NVS!";
+    err = nvs_set_str(my_nvs_handle, key, data);
     if (err != ESP_OK) {
         return;
     }
 
     // 提交更改
     err = nvs_commit(my_nvs_handle);
+    free(data);
+
     if (err != ESP_OK) {
         return;
     }
-
     // 关闭命名空间
     nvs_close(my_nvs_handle);
 }
 
-void read_data()
-{
+char *read_data(char *key) {
     esp_err_t err;
 
     // 打开命名空间
     nvs_handle my_nvs_handle;
     err = nvs_open("storage", NVS_READONLY, &my_nvs_handle);
     if (err != ESP_OK) {
-        return;
+        return NULL;
     }
 
     size_t required_size;
-    err = nvs_get_str(my_nvs_handle, "greeting", NULL, &required_size);
+    err = nvs_get_str(my_nvs_handle, key, NULL, &required_size);
+    free(key);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
-        return;
+        return NULL;
     } else if (err != ESP_OK) {
-        return;
+        return NULL;
     }
 
-    char *data = (char *)malloc(required_size);
+    char *data = (char *) malloc(required_size);
     if (data == NULL) {
-        return;
+        return NULL;
     }
 
-    err = nvs_get_str(my_nvs_handle, "greeting", data, &required_size);
+    err = nvs_get_str(my_nvs_handle, key, data, &required_size);
     if (err != ESP_OK) {
         free(data);
-        return;
+        return NULL;
     }
-    free(data);
-
-    // 关闭命名空间
     nvs_close(my_nvs_handle);
+    return data;
 }

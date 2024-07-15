@@ -9,8 +9,8 @@
 #include "nvs_flash.h"
 
 void sto_init();
-void store_data();
-void read_data();
+void store_data(char *key,char *data);
+char *read_data(char *key);
 
 
 

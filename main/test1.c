@@ -291,6 +291,10 @@ void app_main(void) {
     conn_keys_init();
     xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
     xTaskCreate(task_listen_key, "listen", 8096,NULL, 100,NULL);
+
+
+    wifi_init_sta();
+    mqtt_app_start();
 }
 
 void task_aht20(void *pvParameters) {
@@ -334,6 +338,5 @@ static lv_indev_drv_t indev_drv;
 
 
 void task_listen_key(void *pv) {
-
-
+    listen_config_key();
 }
