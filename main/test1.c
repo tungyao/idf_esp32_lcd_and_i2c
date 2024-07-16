@@ -310,7 +310,7 @@ void task_aht20(void *pvParameters) {
 void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
     panel1(scr);
-    panel2(scr);
+    // panel2(scr);
     while (1) {
         if (temperature < 0) {
             temperature = 0 - temperature;
