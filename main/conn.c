@@ -17,63 +17,61 @@ static void IRAM_ATTR key_isr_handler(void *arg) {
 
 void conn_keys_init() {
     gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_POSEDGE, // Disable interrupt
+        .intr_type = GPIO_INTR_ANYEDGE, // Disable interrupt
         .mode = GPIO_MODE_INPUT, // Set as Input
         .pin_bit_mask = (1ULL << IO19), // Bitmask
-        .pull_up_en = GPIO_PULLUP_DISABLE, // Enable pull-up
+        .pull_down_en = 1, // Enable pull-up
+        .pull_up_en = 0, // Enable pull-up
     };
     gpio_config(&io_conf);
 
     gpio_config_t io_conf2 = {
-        .intr_type = GPIO_INTR_POSEDGE, // Disable interrupt
+        .intr_type = GPIO_INTR_ANYEDGE, // Disable interrupt
         .mode = GPIO_MODE_INPUT, // Set as Input
         .pin_bit_mask = (1ULL << IO18), // Bitmask
-        .pull_up_en = GPIO_PULLUP_DISABLE, // Enable pull-up
+        .pull_up_en = GPIO_PULLUP_ENABLE, // Enable pull-up
     };
     gpio_config(&io_conf2);
 
-    key_queue = xQueueCreate(10, sizeof(uint32_t));
+    key_queue = xQueueCreate(1, sizeof(uint32_t));
+    gpio_intr_enable(IO19);
+    gpio_intr_enable(IO18);
+
     gpio_install_isr_service(0);
+    // gpio_isr_register(IO19, key_isr_handler, NULL, 0, 0);
     gpio_isr_handler_add(IO19, key_isr_handler, (void *) IO19);
-    gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
+    // gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
 }
 
 void listen_config_key() {
     uint32_t gpio_num;
-    while (pdTRUE) {
+    ESP_LOGI("RX_TASK_TAG", "uart_driver_install");
+    // Set UART receive callback function
+    while (1) {
         //
         if (xQueueReceive(key_queue, &gpio_num, portMAX_DELAY)) {
-            if (gpio_num == IO19) {
-                int64_t press_start_time = esp_timer_get_time(); // 获取当前时间
-                while (1) {
+            if (gpio_num == IO19  && input_mode == 0) {
+                ESP_LOGI("RX_TASK_TAG", "into uart get wifi password");
+
+                int64_t press_start_time = esp_timer_get_time() / 1000 / 1000; // 获取当前时间
+                ESP_LOGI("RX_TASK_TAG", "%lld", press_start_time);
+                if (gpio_get_level(IO19) == 1) {
+                    vTaskDelay(pdMS_TO_TICKS(5000));
                     if (gpio_get_level(IO19) == 1) {
-                        // 检测按键是否被按下
-                        vTaskDelay(pdMS_TO_TICKS(100)); // 短暂延时，消抖
-                        if (gpio_get_level(IO19) == 1) {
-                            // 再次检测，确认按键状态
-                            int64_t current_time = esp_timer_get_time();
-                            if ((current_time - press_start_time) >= LONG_PRESS_TIME) {
-                                // 进入uart获取wifi相关的数据并写入
-                                char *data = (char *) malloc(RD_BUF_SIZE + 1);
-                                const int rxBytes = uart_read_bytes(UART_NUM_0, data, RD_BUF_SIZE,
-                                                                    1000 / portTICK_PERIOD_MS);
-                                if (rxBytes > 0) {
-                                    data[rxBytes] = 0;
-                                    ESP_LOGI("RX_TASK_TAG", "Read %d bytes: '%s'", rxBytes, data);
-                                    ESP_LOG_BUFFER_HEXDUMP("RX_TASK_TAG", data, rxBytes, ESP_LOG_INFO);
-                                    store_data("wifi", data);
-                                    return;
-                                }
-                            }
-                        }
+                        input_mode = 1;
+                        ESP_LOGI("RX_TASK_TAG", "xxxxxxxxxxxxxxxxxxxxx");
                     }
-                    vTaskDelay(pdMS_TO_TICKS(20)); // 延时，降低CPU占用
                 }
             }
         }
     }
 }
 
+void listen_uart() {
+    while (1 && input_mode == 1) {
+        vTaskDelay(pdMS_TO_TICKS(1000)); // 延时，降低CPU占用
+    }
+}
 
 // 连接WiFi的函数
 static void event_handler(void *arg, esp_event_base_t event_base,

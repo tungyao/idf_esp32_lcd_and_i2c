@@ -1,5 +1,6 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 static const char *CONN_TAG = "conn";
@@ -17,7 +18,8 @@ static QueueHandle_t key_queue = NULL;
 #define RD_BUF_SIZE (BUF_SIZE)
 
 static QueueHandle_t uart0_queue;
-
+static uint8_t input_mode  = 0;
+static uint8_t input_mode_safe  = 0;
 #define IO19 19
 #define IO18 18
 
@@ -29,7 +31,7 @@ void conn_keys_init();
 
 // 监听一个按键
 void listen_config_key();
-
+void listen_uart();
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
