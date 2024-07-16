@@ -90,7 +90,7 @@ static int s_retry_num = 0;
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data);
 
-void wifi_init_sta(void);
+void wifi_init_sta(char *ssid, char *pwd);
 
 
 // MQTT
@@ -98,10 +98,7 @@ void wifi_init_sta(void);
 #include "mqtt_client.h"
 #include "esp_log.h"
 
-static const char *MQTT_BROKER = "192.168.100.186";
-static const int MQTT_PORT = 1883; // MQTT端口，默认为1883
+#define PORT 10000
+#define HOST_IP_ADDR "192.168.100.1"
 
-static void log_error_if_nonzero(const char *message, int error_code);
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
-// MQTT事件处理函数
-void mqtt_app_start();
+void tcp_client(void) ;

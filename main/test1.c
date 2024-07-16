@@ -48,6 +48,7 @@ void task_lvgl(void *pvParameters);
 
 void task_listen_key(void *pv);
 
+void task_conn(void *pv);
 
 static esp_err_t i2c_master_init(void) {
     int i2c_master_port = I2C_MASTER_NUM;
@@ -291,10 +292,7 @@ void app_main(void) {
     conn_keys_init();
     xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
     xTaskCreate(task_listen_key, "listen", 8096,NULL, 100,NULL);
-
-
-    wifi_init_sta();
-    mqtt_app_start();
+    xTaskCreate(task_conn, "conn", 8096,NULL, 200,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -334,9 +332,40 @@ void task_lvgl(void *pvParameters) {
 
 
 // 增加两个按键的控制
-static lv_indev_drv_t indev_drv;
 
 
 void task_listen_key(void *pv) {
     listen_config_key();
+}
+
+void task_conn(void *pv) {
+    char *data;
+    while (true) {
+        data = read_data("wifi");
+        if (data == NULL) {
+            s5;
+        } else {
+            break;
+        }
+    }
+    char ssid[32];
+    char pwd[32];
+    int p = 0;
+    const size_t length = strlen(data);
+    for (int i = 0; i < length; i++) {
+        if (data[i] == ',') {
+            p = i;
+            continue;
+        }
+        if (data[i] == '\0') {
+            continue;
+        }
+        if (p == 0) {
+            ssid[i] = data[i];
+        } else {
+            pwd[i - p - 1] = data[i];
+        }
+    }
+    wifi_init_sta(ssid, pwd);
+    tcp_client();
 }
