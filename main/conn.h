@@ -1,3 +1,5 @@
+#ifndef CONN
+#define CONN
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -18,10 +20,13 @@ static QueueHandle_t key_queue = NULL;
 #define RD_BUF_SIZE (BUF_SIZE)
 
 static QueueHandle_t uart0_queue;
-static uint8_t input_mode  = 0;
+static uint8_t input_mode = 0;
+
 void change_input_mode();
+
 uint8_t get_input_mode();
-static uint8_t input_mode_safe  = 0;
+
+static uint8_t input_mode_safe = 0;
 #define IO19 19
 #define IO18 18
 static bool buttonPressed = false;
@@ -34,11 +39,14 @@ static const int RX_BUF_SIZE = 1024;
 static void IRAM_ATTR key_isr_handler(void *arg);
 
 void uart_event(char *data, int length);
+
 void conn_keys_init();
 
 // 监听一个按键
 void listen_config_key();
+
 void listen_uart(void *arg);
+
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -94,8 +102,10 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+static int wifi_conned = 0;
 static int s_retry_num = 0;
 
+int get_wifi_conn();
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data);
 
@@ -108,6 +118,8 @@ void wifi_init_sta(char *ssid, char *pwd);
 #include "esp_log.h"
 
 #define PORT 10000
-#define HOST_IP_ADDR "192.168.100.1"
+#define HOST_IP_ADDR "192.168.100.186"
 
-void tcp_client(void) ;
+int tcp_client2(void);
+
+#endif

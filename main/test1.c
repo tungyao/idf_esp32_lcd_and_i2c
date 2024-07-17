@@ -385,14 +385,16 @@ void task_conn(void *pv) {
     ESP_LOGI("GET_WIFI", "'%s'", ssid);
     ESP_LOGI("GET_WIFI", "'%s'", pwd);
 
-    goto restart;
-restart:
-    wifi_init_sta(ssid, pwd);
-    if (esp_wifi_connect() == ESP_OK) {
-        tcp_client();
-    } else {
-        ESP_LOGI("WIFI", "restart conn wifi");
-        vTaskDelay(pdMS_TO_TICKS(60000));
-        goto restart;
+    while (1) {
+        wifi_init_sta(ssid, pwd);
+        if (get_wifi_conn() == 0) {
+            ESP_LOGI("WIFI", "restart conn wifi");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        } else {
+            tcp_client2();
+            break;
+        }
     }
+    vTaskDelete(NULL);
+    // vTaskDelay(pdMS_TO_TICKS(5000));
 }
