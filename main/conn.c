@@ -17,7 +17,7 @@ static void IRAM_ATTR key_isr_handler(void *arg) {
 
 void conn_keys_init() {
     gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_ANYEDGE, // Disable interrupt
+        .intr_type = GPIO_INTR_NEGEDGE, // Disable interrupt
         .mode = GPIO_MODE_INPUT, // Set as Input
         .pin_bit_mask = (1ULL << IO19), // Bitmask
         .pull_down_en = 1, // Enable pull-up
@@ -26,7 +26,7 @@ void conn_keys_init() {
     gpio_config(&io_conf);
 
     gpio_config_t io_conf2 = {
-        .intr_type = GPIO_INTR_ANYEDGE, // Disable interrupt
+        .intr_type = GPIO_INTR_POSEDGE, // Disable interrupt
         .mode = GPIO_MODE_INPUT, // Set as Input
         .pin_bit_mask = (1ULL << IO18), // Bitmask
         .pull_up_en = GPIO_PULLUP_ENABLE, // Enable pull-up
@@ -43,35 +43,78 @@ void conn_keys_init() {
     // gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
 }
 
+void change_input_mode() {
+    if (input_mode == 0) {
+        input_mode = 1;
+    } else {
+        input_mode = 0;
+    }
+}
+
+uint8_t get_input_mode() {
+    return input_mode;
+}
+
 void listen_config_key() {
+    input_mode = 0;
     uint32_t gpio_num;
-    ESP_LOGI("RX_TASK_TAG", "uart_driver_install");
     // Set UART receive callback function
     while (1) {
         //
         if (xQueueReceive(key_queue, &gpio_num, portMAX_DELAY)) {
-            if (gpio_num == IO19  && input_mode == 0) {
-                ESP_LOGI("RX_TASK_TAG", "into uart get wifi password");
+            if (gpio_num == IO19) {
+                // vTaskDelay(50 / portTICK_PERIOD_MS);
 
-                int64_t press_start_time = esp_timer_get_time() / 1000 / 1000; // 获取当前时间
-                ESP_LOGI("RX_TASK_TAG", "%lld", press_start_time);
-                if (gpio_get_level(IO19) == 1) {
-                    vTaskDelay(pdMS_TO_TICKS(5000));
-                    if (gpio_get_level(IO19) == 1) {
-                        input_mode = 1;
-                        ESP_LOGI("RX_TASK_TAG", "xxxxxxxxxxxxxxxxxxxxx");
+                buttonPressed = true;
+                uint64_t currentTime = esp_timer_get_time();
+                if ((currentTime - lastButtonPressTime) < (DOUBLE_CLICK_TIME * 1000)) {
+                    // 检测到双击
+                    buttonPressCount++;
+                    if (buttonPressCount == 2) {
+                        buttonPressCount = 0; // 重置点击计数
+                        change_input_mode();
+                        ESP_LOGI("RX_TASK_TAG", "double click IO19");
+                        // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
                     }
+                } else {
+                    buttonPressCount = 1; // 重置点击计数
                 }
+                lastButtonPressTime = currentTime; // 更新最后按下时间
+            } else {
+                buttonPressed = false;
             }
         }
     }
 }
-
-void listen_uart() {
-    while (1 && input_mode == 1) {
-        vTaskDelay(pdMS_TO_TICKS(1000)); // 延时，降低CPU占用
+// aaaaaaaaa,bbbbbbbbbb
+void uart_event(char *data, int length) {
+    if (data[0] == 'p' && data[1] == 'w' && data[2] == 'd') {
+        // 设置wifi密码
+        char newdata[length - 3];
+        for (int i = 3; i < length; ++i) {
+            newdata[i - 3] = data[i];
+        }
+        ESP_LOGI("EVENT", "'%s'", newdata);
+        store_data("wifi", newdata);
     }
 }
+
+void listen_uart(void *arg) {
+    static const char *RX_TASK_TAG = "RX_TASK";
+    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+    char *data = (char *) malloc(RX_BUF_SIZE + 1);
+    while (1) {
+        const int rxBytes = uart_read_bytes(UART_NUM_0, data, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
+        if (rxBytes > 0) {
+            data[rxBytes] = 0;
+            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
+            uart_event(data, rxBytes);
+        }
+    }
+    free(data);
+    vTaskDelete(NULL);
+}
+
 
 // 连接WiFi的函数
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -145,12 +188,12 @@ void wifi_init_sta(char *ssid, char *pwd) {
     (bits & WIFI_CONNECTED_BIT
     ) {
         ESP_LOGI(CONN_TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 ssid, pwd);
     } else if
     (bits & WIFI_FAIL_BIT
     ) {
         ESP_LOGI(CONN_TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 ssid, pwd);
     } else {
         ESP_LOGE(CONN_TAG, "UNEXPECTED EVENT");
     }

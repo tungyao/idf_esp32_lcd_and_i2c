@@ -19,19 +19,26 @@ static QueueHandle_t key_queue = NULL;
 
 static QueueHandle_t uart0_queue;
 static uint8_t input_mode  = 0;
+void change_input_mode();
+uint8_t get_input_mode();
 static uint8_t input_mode_safe  = 0;
 #define IO19 19
 #define IO18 18
-
+static bool buttonPressed = false;
+static uint64_t lastButtonPressTime = 0;
+static int buttonPressCount = 0;
+#define DOUBLE_CLICK_TIME 500 // 双击时间阈值，单位毫秒
 #define LONG_PRESS_TIME 3000
+static const int RX_BUF_SIZE = 1024;
 
 static void IRAM_ATTR key_isr_handler(void *arg);
 
+void uart_event(char *data, int length);
 void conn_keys_init();
 
 // 监听一个按键
 void listen_config_key();
-void listen_uart();
+void listen_uart(void *arg);
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

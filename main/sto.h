@@ -10,7 +10,7 @@
 
 void sto_init();
 void store_data(char *key,char *data);
-char *read_data(char *key);
+uint8_t read_data( const char* key, char* out_value, size_t* length);
 
 
 

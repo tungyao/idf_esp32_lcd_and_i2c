@@ -287,15 +287,6 @@ void app_main(void) {
     // esp_lcd_panel_swap_xy(panel_handle, true);
     // esp_lcd_panel_mirror(panel_handle, false, true);
 
-    uart_event_t event;
-    size_t size = 0;
-    uint8_t* data = (uint8_t*) malloc(128);
-    if (data == NULL) {
-        ESP_LOGE("LISTEN_KEY", "Failed to allocate memory for buffer");
-        vTaskDelete(NULL);
-        return;
-    }
-
     // Set UART configuration
     uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -310,8 +301,9 @@ void app_main(void) {
     uart_driver_install(UART_NUM_0, 128 * 2, 0, 0, NULL, 0);
     conn_keys_init();
     // xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
-    xTaskCreate(task_listen_key, "listen", 8096,NULL, 1,NULL);
-    xTaskCreate(task_conn, "conn", 8096,NULL, 200,NULL);
+    xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
+    xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
+    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -358,20 +350,24 @@ void task_listen_key(void *pv) {
 }
 
 void task_conn(void *pv) {
-    char *data;
+    char data[64];
+    size_t length = sizeof(data);
+
     while (true) {
-        data = read_data("wifi");
-        if (data == NULL) {
+        uint8_t p = read_data("wifi", data, &length);
+        if (p == 0 || length == 0) {
             ESP_LOGI("TASK_CONN", "get wifi data failed");
             s5;
         } else {
             break;
         }
     }
+    ESP_LOGI("TASK_CONN", "get wifi data len %d", length);
     char ssid[32];
     char pwd[32];
     int p = 0;
-    const size_t length = strlen(data);
+    memset(ssid, 0, sizeof(ssid));
+    memset(pwd, 0, sizeof(pwd));
     for (int i = 0; i < length; i++) {
         if (data[i] == ',') {
             p = i;
@@ -386,6 +382,17 @@ void task_conn(void *pv) {
             pwd[i - p - 1] = data[i];
         }
     }
+    ESP_LOGI("GET_WIFI", "'%s'", ssid);
+    ESP_LOGI("GET_WIFI", "'%s'", pwd);
+
+    goto restart;
+restart:
     wifi_init_sta(ssid, pwd);
-    tcp_client();
+    if (esp_wifi_connect() == ESP_OK) {
+        tcp_client();
+    } else {
+        ESP_LOGI("WIFI", "restart conn wifi");
+        vTaskDelay(pdMS_TO_TICKS(60000));
+        goto restart;
+    }
 }

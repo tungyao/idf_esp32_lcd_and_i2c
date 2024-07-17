@@ -4,73 +4,59 @@
 
 #include "sto.h"
 
+#include <esp_log.h>
+
 void sto_init() {
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
+        err = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);
+    ESP_ERROR_CHECK(err);
 }
 
 
-void store_data(char *key,char *data) {
+void store_data(char *key, char *data) {
+    nvs_handle_t my_handle;
     esp_err_t err;
-
-    // 打开命名空间
-    nvs_handle my_nvs_handle;
-    err = nvs_open("storage", NVS_READWRITE, &my_nvs_handle);
+    err = nvs_open("storage", NVS_READWRITE, &my_handle);
     if (err != ESP_OK) {
-        return;
-    }
+        ESP_LOGE("STORE", "Error (%s) opening NVS handle!", esp_err_to_name(err));
+    } else {
+        ESP_LOGE("STORE", "Updating restart counter in NVS ... ");
+        err = nvs_set_str(my_handle, key, data);
+        ESP_LOGE("STORE", "%s", (err != ESP_OK) ? "Failed!" : "Done");
+        // Commit written value.
+        // After setting any values, nvs_commit() must be called to ensure changes are written
+        // to flash storage. Implementations may write to storage at other times,
+        // but this is not guaranteed.
+        ESP_LOGE("STORE", "Committing updates in NVS ... ");
+        err = nvs_commit(my_handle);
+        ESP_LOGE("STORE", "%s", (err != ESP_OK) ? "Failed!" : "Done");
 
-    // 设置数据
-    // const char* data = "Hello, NVS!";
-    err = nvs_set_str(my_nvs_handle, key, data);
-    if (err != ESP_OK) {
-        return;
+        // Close
+        nvs_close(my_handle);
     }
-
-    // 提交更改
-    err = nvs_commit(my_nvs_handle);
-    free(data);
-
-    if (err != ESP_OK) {
-        return;
-    }
-    // 关闭命名空间
-    nvs_close(my_nvs_handle);
 }
 
-char *read_data(char *key) {
-    esp_err_t err;
+uint8_t read_data(const char* key, char* out_value, size_t* length) {
+    nvs_handle_t my_handle;
+    esp_err_t ret;
 
-    // 打开命名空间
-    nvs_handle my_nvs_handle;
-    err = nvs_open("storage", NVS_READONLY, &my_nvs_handle);
-    if (err != ESP_OK) {
-        return NULL;
+    // 打开NVS命名空间
+    ret = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (ret != ESP_OK) {
+        return 0;
     }
 
-    size_t required_size;
-    err = nvs_get_str(my_nvs_handle, key, NULL, &required_size);
-    free(key);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        return NULL;
-    } else if (err != ESP_OK) {
-        return NULL;
+    // 读取字符串
+    ret = nvs_get_str(my_handle, key, out_value, length);
+    if (ret != ESP_OK) {
+        // 错误处理
+        return 0;
     }
 
-    char *data = (char *) malloc(required_size);
-    if (data == NULL) {
-        return NULL;
-    }
-
-    err = nvs_get_str(my_nvs_handle, key, data, &required_size);
-    if (err != ESP_OK) {
-        free(data);
-        return NULL;
-    }
-    nvs_close(my_nvs_handle);
-    return data;
+    // 关闭NVS句柄
+    nvs_close(my_handle);
+    return 1;
 }
