@@ -88,22 +88,29 @@ void listen_config_key() {
     }
 }
 
-// aaaaaaaaa,bbbbbbbbbb
+// 使用uart和esp32交互
 void uart_event(char *data, int length) {
+    char newdata[length - 3];
+    for (int i = 3; i < length; ++i) {
+        newdata[i - 3] = data[i];
+    }
+    ESP_LOGI("EVENT", "'%s'", newdata);
+
+    // 放入wifi账号和密码
     if (data[0] == 'p' && data[1] == 'w' && data[2] == 'd') {
         // 设置wifi密码
-        char newdata[length - 3];
-        for (int i = 3; i < length; ++i) {
-            newdata[i - 3] = data[i];
-        }
-        ESP_LOGI("EVENT", "'%s'", newdata);
+
         store_data("wifi", newdata);
+    }
+
+    // 设置地区 和风天气的地区id
+    if (data[0] == 'l' && data[1] == 'o' && data[2] == 'c') {
+        store_data("he_loc", newdata);
     }
 }
 
 void listen_uart(void *arg) {
     static const char *RX_TASK_TAG = "RX_TASK";
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
     char *data = (char *) malloc(RX_BUF_SIZE + 1);
     while (1) {
         const int rxBytes = uart_read_bytes(UART_NUM_0, data, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
@@ -118,7 +125,7 @@ void listen_uart(void *arg) {
 }
 
 
-// 连接WiFi的函数
+// 监听wifi的状态 并重新连接
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -164,11 +171,6 @@ void wifi_init_sta(char *ssid, char *pwd) {
         NULL,
         &instance_got_ip));
 
-    // wifi_config_t wifi_config;
-    // wifi_sta_config_t sta;
-    // *sta.ssid = (uint8_t) *ssid;
-    // *sta.password = (uint8_t) *pwd;
-    // wifi_config.sta = sta;
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -185,16 +187,12 @@ void wifi_init_sta(char *ssid, char *pwd) {
 
     ESP_LOGI(CONN_TAG, "wifi_init_sta finished.");
 
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE,
                                            pdFALSE,
                                            portMAX_DELAY);
 
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(CONN_TAG, "connected to ap SSID:%s password:%s", ssid, pwd);
         wifi_conned = 1;
@@ -274,6 +272,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+#include "cJSON.h"
+
 int tcp_client2(void) {
     tcp_client_t client;
     tcp_client_init(&client, "192.168.100.186", 10000);
@@ -284,7 +284,7 @@ int tcp_client2(void) {
         vTaskDelete(NULL);
     }
 
-    const char *request = "hello world";
+    const char *request = "now";
     ret = tcp_client_send(&client, request);
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to send request");
@@ -292,6 +292,7 @@ int tcp_client2(void) {
     }
 
     char rx_buffer[1024];
+    memset(rx_buffer, 0, sizeof(rx_buffer));
     ret = tcp_client_receive(&client, rx_buffer, sizeof(rx_buffer));
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to receive response");
