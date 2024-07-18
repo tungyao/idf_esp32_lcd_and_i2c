@@ -16,7 +16,7 @@ void tcp_client_init(tcp_client_t *client, const char *host, int port);
 void tcp_client_cleanup(tcp_client_t *client);
 esp_err_t tcp_client_connect(tcp_client_t *client);
 esp_err_t tcp_client_send(tcp_client_t *client, const char *data);
-esp_err_t tcp_client_receive(tcp_client_t *client, char *buffer, int buffer_size);
+int tcp_client_receive(tcp_client_t *client, char *buffer, int buffer_size);
 
 
 

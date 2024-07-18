@@ -65,17 +65,17 @@ esp_err_t tcp_client_send(tcp_client_t *client, const char *data) {
     return ESP_OK;
 }
 
-esp_err_t tcp_client_receive(tcp_client_t *client, char *buffer, int buffer_size) {
+int tcp_client_receive(tcp_client_t *client, char *buffer, int buffer_size) {
     int len = recv(client->socket, buffer, buffer_size - 1, 0);
     if (len < 0) {
         ESP_LOGE(TAG, "Receive failed: errno %d", errno);
-        return ESP_FAIL;
+        return -1;
     } else if (len == 0) {
         ESP_LOGW(TAG, "Connection closed");
-        return ESP_FAIL;
+        return -1;
     } else {
         buffer[len] = '\0'; // Null-terminate the buffer
         ESP_LOGI(TAG, "Received %d bytes: %s", len, buffer);
-        return ESP_OK;
+        return len;
     }
 }

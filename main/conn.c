@@ -74,6 +74,7 @@ void listen_config_key() {
                     if (buttonPressCount == 2) {
                         buttonPressCount = 0; // 重置点击计数
                         change_input_mode();
+                        tcp_client2();
                         ESP_LOGI("RX_TASK_TAG", "double click IO19");
                         // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
                     }
@@ -284,7 +285,7 @@ int tcp_client2(void) {
         vTaskDelete(NULL);
     }
 
-    const char *request = "now";
+    const char *request = "now101044000";
     ret = tcp_client_send(&client, request);
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to send request");
