@@ -34,3 +34,13 @@ static lv_obj_t *page2= NULL;
 void panel1(lv_obj_t* scr);
 void panel2(lv_obj_t* scr);
 void switch_panel();
+
+
+
+// 初始化字库
+LV_FONT_DECLARE(weather_chinese)
+LV_FONT_DECLARE(weather_icon)
+
+
+
+void unicode_to_utf8(unsigned int codepoint, char* out);

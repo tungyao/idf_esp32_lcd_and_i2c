@@ -4,7 +4,7 @@
 void meter1(lv_obj_t* scr)
 {
     temp_label = lv_label_create(scr);
-    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_32, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(temp_label, &weather_icon, LV_STATE_DEFAULT);
     lv_obj_align(temp_label, LV_TEXT_ALIGN_CENTER, 10, 5);
     lv_label_set_text_fmt(temp_label, "%-5s:  %s", "temp", "loading");
     g_meter = lv_meter_create(scr);
@@ -130,3 +130,29 @@ void switch_panel()
         point = 0;
     }
 }
+
+void unicode_to_utf8(unsigned int codepoint, char* out) {
+    if (codepoint <= 0x7F) { // 1-byte sequence
+        *out++ = (char)(codepoint & 0xFF);
+        *out = '\0';
+    }
+    else if (codepoint <= 0x7FF) { // 2-byte sequence
+        *out++ = (char)(0xC0 | ((codepoint >> 6) & 0x1F));
+        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out = '\0';
+    }
+    else if (codepoint <= 0xFFFF) { // 3-byte sequence
+        *out++ = (char)(0xE0 | ((codepoint >> 12) & 0x0F));
+        *out++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out = '\0';
+    }
+    else if (codepoint <= 0x1FFFFF) { // 4-byte sequence
+        *out++ = (char)(0xF0 | ((codepoint >> 18) & 0x07));
+        *out++ = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+        *out++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out = '\0';
+    }
+}
+

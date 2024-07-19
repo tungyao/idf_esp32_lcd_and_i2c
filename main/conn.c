@@ -276,6 +276,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 #include "cJSON.h"
 
 int tcp_client2(void) {
+    char data[16];
+    size_t length = sizeof(data);
+
+    // 读取本地存储的地区代码
+    err_t p = read_data("loc", data, &length);
+
+    if (length == 0 || p == ESP_ERR_NVS_NOT_FOUND) {
+        return 0;
+    }
+
+
     tcp_client_t client;
     tcp_client_init(&client, "192.168.100.186", 10000);
 
@@ -285,7 +296,14 @@ int tcp_client2(void) {
         vTaskDelete(NULL);
     }
 
-    const char *request = "now101044000";
+    char request[24];
+    memset(request, 0, sizeof(request));
+    request[0] = 'n';
+    request[1] = 'o';
+    request[2] = 'w';
+    for (int i = 3; i < length; ++i) {
+        request[i] = data[i - 3];
+    }
     ret = tcp_client_send(&client, request);
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to send request");
@@ -300,6 +318,9 @@ int tcp_client2(void) {
     }
     ESP_LOGI("TCP", "rece %s", rx_buffer);
     tcp_client_cleanup(&client);
+
+    // 开始解析
+
 
     return 0;
 }
