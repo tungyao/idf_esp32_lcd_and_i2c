@@ -8,6 +8,7 @@
 #include <freertos/projdefs.h>
 #include <sys/socket.h>
 
+#include "panel1.h"
 #include "sto.h"
 #include "tcp_client.h"
 
@@ -27,10 +28,11 @@ void conn_keys_init() {
     gpio_config(&io_conf);
 
     gpio_config_t io_conf2 = {
-        .intr_type = GPIO_INTR_POSEDGE, // Disable interrupt
-        .mode = GPIO_MODE_INPUT, // Set as Input
-        .pin_bit_mask = (1ULL << IO18), // Bitmask
-        .pull_up_en = GPIO_PULLUP_ENABLE, // Enable pull-up
+        .intr_type = GPIO_INTR_NEGEDGE, // Disable interrupt
+          .mode = GPIO_MODE_INPUT, // Set as Input
+          .pin_bit_mask = (1ULL << IO18), // Bitmask
+          .pull_down_en = 1, // Enable pull-up
+          .pull_up_en = 0, // Enable pull-up
     };
     gpio_config(&io_conf2);
 
@@ -41,7 +43,7 @@ void conn_keys_init() {
     gpio_install_isr_service(0);
     // gpio_isr_register(IO19, key_isr_handler, NULL, 0, 0);
     gpio_isr_handler_add(IO19, key_isr_handler, (void *) IO19);
-    // gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
+    gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
 }
 
 void change_input_mode() {
@@ -74,16 +76,20 @@ void listen_config_key() {
                     if (buttonPressCount == 2) {
                         buttonPressCount = 0; // 重置点击计数
                         change_input_mode();
-                        tcp_client2();
+                        // tcp_client2();
                         ESP_LOGI("RX_TASK_TAG", "double click IO19");
                         // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
                     }
                 } else {
                     buttonPressCount = 1; // 重置点击计数
+                    switch_panel();
                 }
                 lastButtonPressTime = currentTime; // 更新最后按下时间
             } else {
                 buttonPressed = false;
+            }
+            if (gpio_num == IO18) {
+                switch_panel();
             }
         }
     }

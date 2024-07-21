@@ -248,7 +248,7 @@ void app_main(void) {
 
 
     ESP_LOGI(TAG, "Turn on LCD backlight");
-    gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, EXAMPLE_LCD_BK_LIGHT_ON_LEVEL);
+    gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 0);
 
     ESP_LOGI(TAG, "Initialize LVGL library");
     lv_init();
@@ -302,8 +302,8 @@ void app_main(void) {
     conn_keys_init();
     xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
-    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+    // xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
+    // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -322,6 +322,8 @@ void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
     panel1(scr);
     // panel2(scr);
+    // set_weather(
+        // "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
     while (1) {
         if (temperature < 0) {
             temperature = 0 - temperature;
@@ -330,8 +332,8 @@ void task_lvgl(void *pvParameters) {
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
         // update_meter_value((int) temperature);
         update_text_value(temperature);
-        update_text_value2(humidity);
         update_meter_value(temperature);
+        update_text_value2(humidity);
         update_meter_value2(humidity);
 
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance

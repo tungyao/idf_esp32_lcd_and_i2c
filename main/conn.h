@@ -32,7 +32,7 @@ static uint8_t input_mode_safe = 0;
 static bool buttonPressed = false;
 static uint64_t lastButtonPressTime = 0;
 static int buttonPressCount = 0;
-#define DOUBLE_CLICK_TIME 500 // 双击时间阈值，单位毫秒
+#define DOUBLE_CLICK_TIME 100 // 双击时间阈值，单位毫秒
 #define LONG_PRESS_TIME 3000
 static const int RX_BUF_SIZE = 1024;
 
