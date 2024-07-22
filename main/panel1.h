@@ -1,5 +1,7 @@
 ﻿#pragma once
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #ifdef IDF_VER
 #include "lvgl.h"
 #else
@@ -29,9 +31,21 @@ void update_meter_value(int32_t value);
 
 void update_meter_value2(int32_t value);
 
-void update_text_value(float value);
+void update_text_temp(
+#ifdef IDF_VER
+    float value
+#else
+    int value
+#endif
+);
 
-void update_text_value2(float value);
+void update_text_humid(
+#ifdef IDF_VER
+    float value
+#else
+    int value
+#endif
+);
 
 static int point = 0;
 
@@ -48,6 +62,8 @@ void switch_panel();
 // 初始化字库
 LV_FONT_DECLARE(weather_chinese)
 LV_FONT_DECLARE(weather_icon)
+LV_FONT_DECLARE(number_48px)
+LV_FONT_DECLARE(number_40px)
 
 void set_weather(char *data);
 
@@ -68,7 +84,9 @@ static lv_obj_t *pressure;
 static lv_obj_t *vis;
 static lv_obj_t *cloud;
 static lv_obj_t *dew;
-
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 struct _weather_ovj {
     cJSON *temp;
     cJSON *feels_like;
@@ -85,3 +103,6 @@ struct _weather_ovj {
     cJSON *cloud;
     cJSON *dew;
 } static weather_obj;
+#ifdef __cplusplus
+} /*extern "C"*/
+#endif

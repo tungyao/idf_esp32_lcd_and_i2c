@@ -29,10 +29,10 @@ void conn_keys_init() {
 
     gpio_config_t io_conf2 = {
         .intr_type = GPIO_INTR_NEGEDGE, // Disable interrupt
-          .mode = GPIO_MODE_INPUT, // Set as Input
-          .pin_bit_mask = (1ULL << IO18), // Bitmask
-          .pull_down_en = 1, // Enable pull-up
-          .pull_up_en = 0, // Enable pull-up
+        .mode = GPIO_MODE_INPUT, // Set as Input
+        .pin_bit_mask = (1ULL << IO18), // Bitmask
+        .pull_down_en = 1, // Enable pull-up
+        .pull_up_en = 0, // Enable pull-up
     };
     gpio_config(&io_conf2);
 

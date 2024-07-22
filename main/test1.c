@@ -331,10 +331,8 @@ void task_lvgl(void *pvParameters) {
         // lv_label_set_text_fmt(temp_label, "%-5s:  %2.2f deg", "temp", temperature);
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
         // update_meter_value((int) temperature);
-        update_text_value(temperature);
-        update_meter_value(temperature);
-        update_text_value2(humidity);
-        update_meter_value2(humidity);
+        update_text_temp(temperature);
+        update_text_humid(humidity);
 
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
         vTaskDelay(pdMS_TO_TICKS(1000));
