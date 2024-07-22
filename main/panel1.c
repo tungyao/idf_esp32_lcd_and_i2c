@@ -29,8 +29,8 @@ void meter1(lv_obj_t *scr) {
 
     // 创建湿度数字
     humid = lv_label_create(scr);
-    lv_obj_set_style_text_font(humid, &lv_font_montserrat_14, LV_STATE_DEFAULT);
-    lv_obj_set_pos(humid, 65, 196);
+    lv_obj_set_style_text_font(humid, &lv_font_montserrat_20, LV_STATE_DEFAULT);
+    lv_obj_set_pos(humid, 65, 190);
     lv_label_set_text_fmt(humid, "%s", "90%");
     lv_obj_set_scrollbar_mode(scr, LV_SCROLLBAR_MODE_OFF);
 
@@ -58,14 +58,15 @@ void meter1(lv_obj_t *scr) {
     lv_obj_set_size(g_meter, 250, 250);
     scale1 = lv_meter_add_scale(g_meter);
     lv_meter_set_scale_range(g_meter, scale1, -10, 50, 180, 180);
-    lv_meter_set_scale_ticks(g_meter, scale1, 61, 1, 25, lv_palette_main(LV_PALETTE_GREY));
+    lv_meter_set_scale_ticks(g_meter, scale1, 41, 2, 25, lv_palette_main(LV_PALETTE_GREY));
     indix = lv_meter_add_scale_lines(g_meter, scale1, lv_palette_main(LV_PALETTE_GREEN),
-                                     lv_palette_main(LV_PALETTE_PURPLE),
+                                     lv_palette_main(LV_PALETTE_RED),
                                      0, 0);
     lv_meter_set_indicator_start_value(g_meter, indix, -10);
     lv_meter_set_indicator_end_value(g_meter, indix, 50);
-    indix = lv_meter_add_scale_lines(g_meter, scale1, lv_palette_main(LV_PALETTE_GREY),
-                                     lv_palette_main(LV_PALETTE_GREY),
+    lv_color_t my_color = lv_color_hex(0xFFFFFF);
+    indix = lv_meter_add_scale_lines(g_meter, scale1, my_color,
+                                     my_color,
                                      0, 0);
 }
 
@@ -120,7 +121,7 @@ void update_text_humid(
 #endif
 ) {
 #ifdef IDF_VER
-    lv_label_set_text_fmt(humid, "%-5s: %2.1f  %%", "humid", value);
+    lv_label_set_text_fmt(humid, "%2.1f%%", value);
 #else
     lv_label_set_text_fmt(humid, "%d%%", (int)value);
 #endif

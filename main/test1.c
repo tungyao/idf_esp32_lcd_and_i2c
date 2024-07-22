@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <aht20.h>
+#include <stdio.h>
 #include <esp_lcd_panel_io.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
@@ -29,19 +29,14 @@ static const char *TAG = "test1";
 
 
 
-#define I2C_MASTER_FREQ_HZ          400000                     /*!< I2C master clock frequency */
+#define I2C_MASTER_FREQ_HZ          100000                     /*!< I2C master clock frequency */
 #define I2C_MASTER_TX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_TIMEOUT_MS       1000
 
-#define MPU9250_SENSOR_ADDR                 0x68        /*!< Slave address of the MPU9250 sensor */
-#define MPU9250_WHO_AM_I_REG_ADDR           0x75        /*!< Register addresses of the "who am I" register */
-
-#define MPU9250_PWR_MGMT_1_REG_ADDR         0x6B        /*!< Register addresses of the power managment register */
-#define MPU9250_RESET_BIT                   7
-
 // aht20
-static aht20_dev_handle_t aht20 = NULL;
+#define AHT20_ADDR 0x38
+#define AHT20_PIN  12
 
 void task_aht20(void *pvParameters);
 
@@ -76,8 +71,9 @@ static float humidity;
 
 #define s5 vTaskDelay(pdMS_TO_TICKS(5000))
 #define s1 vTaskDelay(pdMS_TO_TICKS(1000))
+static aht20_dev_handle_t aht20 = NULL;
 
-void init_aht20() {
+static void aht20_read_data() {
     aht20_i2c_config_t i2c_conf = {
         .i2c_port = I2C_MASTER_NUM,
         .i2c_addr = AHT20_ADDRRES_0,
@@ -179,7 +175,7 @@ static void example_increase_lvgl_tick(void *arg) {
     /* Tell LVGL how many milliseconds has elapsed */
     lv_tick_inc(EXAMPLE_LVGL_TICK_PERIOD_MS);
 }
-
+#include "panel1.h"
 #include "sto.h"
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
 void app_main(void) {
@@ -187,7 +183,13 @@ void app_main(void) {
 
     sto_init();
     i2c_master_init();
-    xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
+    gpio_config_t aht20_gpio_config = {
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = 1ULL << AHT20_PIN
+    };
+    ESP_ERROR_CHECK(gpio_config(&aht20_gpio_config));
+    gpio_set_level(AHT20_PIN, 1);
+
 
 
     static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
@@ -300,22 +302,31 @@ void app_main(void) {
     // Install UART driver
     uart_driver_install(UART_NUM_0, 128 * 2, 0, 0, NULL, 0);
     conn_keys_init();
+    vTaskDelay(pdMS_TO_TICKS(200));
+    aht20_read_data();
+    panel1(lv_disp_get_scr_act(disp));
+    update_meter_value(temperature);
+    update_text_temp(temperature);
+    update_text_humid(humidity);
     xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
+
+    xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
     // xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
     // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
+
+
     while (1) {
-        init_aht20();
+        aht20_read_data();
 
         s5;
     }
 }
 
 
-#include "panel1.h"
 
 
 void task_lvgl(void *pvParameters) {
@@ -323,14 +334,11 @@ void task_lvgl(void *pvParameters) {
     panel1(scr);
     // panel2(scr);
     // set_weather(
-        // "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
+    // "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
     while (1) {
-        if (temperature < 0) {
-            temperature = 0 - temperature;
-        }
         // lv_label_set_text_fmt(temp_label, "%-5s:  %2.2f deg", "temp", temperature);
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
-        // update_meter_value((int) temperature);
+        update_meter_value(temperature);
         update_text_temp(temperature);
         update_text_humid(humidity);
 

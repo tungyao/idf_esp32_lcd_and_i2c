@@ -24,9 +24,9 @@ void read_analog_voltage() {
     i2c_master_write_byte(cmd, (CW_ADDR << 1) | I2C_MASTER_READ, true);
     i2c_master_write_byte(cmd,CW_VCELL | I2C_MASTER_WRITE, true);
     i2c_master_stop(cmd);
-    i2c_master_write_to_device(I2C_NUM_0,CW_ADDR,CW_VCELL ,2, );
-    _pWire->endTransmission();
-    _pWire->requestFrom(CW_ADDR, (uint8_t) 2);
-    AnalogVoltage = _pWire->read();
+    i2c_master_write_to_device(I2C_NUM_0,CW_ADDR,CW_VCELL ,2, 0);
+    // _pWire->endTransmission();
+    // _pWire->requestFrom(CW_ADDR, (uint8_t) 2);
+    // AnalogVoltage = _pWire->read();
     AnalogVoltage <<= 8;
 }
