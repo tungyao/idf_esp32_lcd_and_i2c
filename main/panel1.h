@@ -118,6 +118,7 @@ static lv_obj_t* dew_obj;
 struct _weather_ovj
 {
     cJSON* temp;
+    cJSON* text_icon;
     cJSON* feels_like;
     cJSON* icon;
     cJSON* text;

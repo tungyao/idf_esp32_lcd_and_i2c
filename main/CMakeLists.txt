@@ -1,4 +1,4 @@
-idf_component_register(SRCS "number_48px.c"
+idf_component_register(SRCS
         "font_big/number_40px.c"
         "font_big/number_48px.c"
         "font_big/weather_chinese.c"
@@ -30,6 +30,5 @@ idf_component_register(SRCS "number_48px.c"
         "panel1.c"
         "sto.c"
         "cw2015.c"
-
         "test1.c"
         INCLUDE_DIRS "")

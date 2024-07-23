@@ -175,6 +175,7 @@ static void example_increase_lvgl_tick(void *arg) {
     /* Tell LVGL how many milliseconds has elapsed */
     lv_tick_inc(EXAMPLE_LVGL_TICK_PERIOD_MS);
 }
+
 #include "panel1.h"
 #include "sto.h"
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
@@ -189,7 +190,6 @@ void app_main(void) {
     };
     ESP_ERROR_CHECK(gpio_config(&aht20_gpio_config));
     gpio_set_level(AHT20_PIN, 1);
-
 
 
     static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
@@ -317,8 +317,6 @@ void app_main(void) {
 }
 
 void task_aht20(void *pvParameters) {
-
-
     while (1) {
         aht20_read_data();
 
@@ -327,21 +325,19 @@ void task_aht20(void *pvParameters) {
 }
 
 
-
-
 void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
-    panel1(scr);
+    // panel1(scr);
     panel2(scr);
-    // set_weather(
-    // "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
+    set_weather(
+        "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"text_icon\":0,\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
     while (1) {
         // lv_label_set_text_fmt(temp_label, "%-5s:  %2.2f deg", "temp", temperature);
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
-        update_meter_value(temperature);
-        update_text_temp(temperature);
-        update_text_humid(humidity);
-
+        // update_meter_value(temperature);
+        // update_text_temp(temperature);
+        // update_text_humid(humidity);
+        // update_emoji(temperature,humidity);
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
         vTaskDelay(pdMS_TO_TICKS(1000));
         // The task running lv_timer_handler should have lower priority than that running `lv_tick_inc`
