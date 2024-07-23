@@ -332,7 +332,7 @@ void task_aht20(void *pvParameters) {
 void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
     panel1(scr);
-    // panel2(scr);
+    panel2(scr);
     // set_weather(
     // "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
     while (1) {
