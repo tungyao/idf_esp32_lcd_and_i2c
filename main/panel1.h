@@ -53,7 +53,6 @@ static lv_obj_t* page1 = NULL;
 static lv_obj_t* page2 = NULL;
 
 void panel1(lv_obj_t* scr);
-
 void panel2(lv_obj_t* scr);
 
 void switch_panel();
@@ -62,6 +61,7 @@ lv_img_dsc_t* cal_thi(float t, float h);
 
 // 初始化字库
 LV_FONT_DECLARE(weather_chinese)
+LV_FONT_DECLARE(number_16px)
 LV_FONT_DECLARE(number_24px)
 LV_FONT_DECLARE(number_48px)
 LV_FONT_DECLARE(number_40px)
@@ -97,7 +97,11 @@ static lv_obj_t* main_weather;
 static lv_obj_t* emoji_obj;
 void unicode_to_utf8(unsigned int codepoint, char* out);
 void update_emoji(float t, float h);
+void update_time(int h, int m, int s);
+void update_bat(int b);
 // cjson
+static lv_obj_t* time_obj;
+static lv_obj_t* bat_obj;
 static lv_obj_t* temp_obj;
 static lv_obj_t* weather_ch_obj;
 static lv_obj_t* feels_like_obj;
@@ -133,7 +137,7 @@ static const lv_img_dsc_t* weather_mapping_obj[] = {
     &wi_sleet, //10
     &wi_snow, //11
     &wi_thunderstorms, //12
-    &wi_thunderstorms_rain,  //13
+    &wi_thunderstorms_rain, //13
     &wi_dust, //16
     &wi_hurricane //17
 };

@@ -9,5 +9,5 @@ def get_unicode_from_ttf(font_path, char):
     return out
 
 # 使用方法
-a = get_unicode_from_ttf('./MiSansLatin-Light.ttf', "0123456789.-°C%km")
+a = get_unicode_from_ttf('./MiSansLatin-Light.ttf', "0123456789:")
 print(a)

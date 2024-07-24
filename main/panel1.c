@@ -150,8 +150,26 @@ void panel1(lv_obj_t* scr)
     lv_obj_set_style_radius(page1, 0, 0);
     lv_obj_set_size(page1, LV_HOR_RES, LV_VER_RES);
     lv_obj_center(page1);
+    time_obj = lv_label_create(scr);
+    lv_obj_set_style_text_font(time_obj, &number_16px, LV_STATE_DEFAULT);
+    update_time(9, 9, 0);
+    lv_obj_set_pos(time_obj, 40, 5);
+    bat_obj = lv_bar_create(scr);
+    lv_obj_set_size(bat_obj, 38, 2);
+    lv_obj_set_pos(bat_obj, 40, 25);
+
     meter1(page1);
     // meter2(page1);
+}
+
+void update_time(int h, int m, int s)
+{
+    lv_label_set_text_fmt(time_obj, "%d:%d", h, m);
+}
+
+void update_bat(int b)
+{
+    lv_bar_set_value(bat_obj, 70, LV_ANIM_OFF);
 }
 
 #include "cJSON.h"
@@ -246,6 +264,7 @@ void panel2(lv_obj_t* scr)
     lv_obj_add_style(line1, &style_line, 0);
     // lv_obj_center(line1);
 }
+
 
 const char* example =
     "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":0,\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}";
