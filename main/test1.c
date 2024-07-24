@@ -68,6 +68,10 @@ static uint32_t temperature_raw;
 static uint32_t humidity_raw;
 static float temperature;
 static float humidity;
+#include "cw2015.h"
+static float bat;
+
+void task_bat(void *pv);
 
 #define s5 vTaskDelay(pdMS_TO_TICKS(5000))
 #define s1 vTaskDelay(pdMS_TO_TICKS(1000))
@@ -314,6 +318,7 @@ void app_main(void) {
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
     xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
     xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+    xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -355,4 +360,14 @@ void task_listen_key(void *pv) {
 
 void task_conn(void *pv) {
     start_wifi();
+}
+
+#include "cw2015.h"
+static float bat;
+
+void task_bat(void *pv) {
+    while (1) {
+        read_cw2015_battery_quantity(&bat);
+        s5;
+    }
 }

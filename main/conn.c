@@ -6,6 +6,7 @@
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <freertos/projdefs.h>
+#include <lwip/apps/sntp.h>
 #include <sys/socket.h>
 
 #include "panel1.h"
@@ -149,6 +150,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(CONN_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+
+        sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        sntp_setservername(0, "120.25.115.20");
+        sntp_init();
     }
 }
 

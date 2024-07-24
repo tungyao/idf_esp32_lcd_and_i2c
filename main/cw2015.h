@@ -5,25 +5,15 @@
 #ifndef CW2015_H
 #define CW2015_H
 
+#define CW2015_I2C_NUM I2C_NUM_0
+#define CW2015_SDA_IO 0     /*!< gpio number for SDA of I2C peripheral */
+#define CW2015_SCL_IO 1     /*!< gpio number for SCL of I2C peripheral */
+#define CW2015_ADDR (0x4B << 1) /*!< I2C address of the CW2015 chip */
 
-#include <stdio.h>
-#include <driver/i2c.h>
-
-
-
-
-
-#define CW_ADDR       0X62
-#define CW_VERSION    0x00
-#define CW_VCELL      0x02
-#define CW_SOC        0x04
-#define CW_RRT_ALET   0x06
-#define CW_CONFIG     0x08
-#define CW_MODE       0x0a
+#define CW2015_BATTERY_QUANTITY_REG 0x0A
 
 
-
-
+esp_err_t read_cw2015_battery_quantity(float *quantity);
 
 
 #endif //CW2015_H
