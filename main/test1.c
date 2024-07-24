@@ -3,6 +3,7 @@
 #include <esp_lcd_panel_io.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
+#include <esp_sntp.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -45,6 +46,8 @@ void task_lvgl(void *pvParameters);
 void task_listen_key(void *pv);
 
 void task_conn(void *pv);
+
+void task_time(void *pv);
 
 static esp_err_t i2c_master_init(void) {
     int i2c_master_port = I2C_MASTER_NUM;
@@ -94,16 +97,16 @@ static void aht20_read_data() {
 #define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
 #define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
 #define EXAMPLE_LCD_BK_LIGHT_OFF_LEVEL !EXAMPLE_LCD_BK_LIGHT_ON_LEVEL
-#define EXAMPLE_PIN_NUM_SCLK           3
-#define EXAMPLE_PIN_NUM_MOSI           5
+#define EXAMPLE_PIN_NUM_SCLK           6
+#define EXAMPLE_PIN_NUM_MOSI           4
 #define EXAMPLE_PIN_NUM_MISO           -1
-#define EXAMPLE_PIN_NUM_LCD_DC         6
+#define EXAMPLE_PIN_NUM_LCD_DC         3
 #define EXAMPLE_PIN_NUM_LCD_RST        -1
-#define EXAMPLE_PIN_NUM_LCD_CS         4
+#define EXAMPLE_PIN_NUM_LCD_CS         5
 #define EXAMPLE_PIN_NUM_BK_LIGHT       2
 #define EXAMPLE_PIN_NUM_TOUCH_CS       -1
-#define EXAMPLE_LCD_H_RES              240
-#define EXAMPLE_LCD_V_RES              320
+#define EXAMPLE_LCD_H_RES               320
+#define EXAMPLE_LCD_V_RES              240
 #define EXAMPLE_LCD_CMD_BITS           8
 #define EXAMPLE_LCD_PARAM_BITS         8
 
@@ -266,8 +269,8 @@ void app_main(void) {
     assert(buf2);
     // initialize LVGL draw buffers
     lv_disp_draw_buf_init(&disp_buf, buf1, buf2, EXAMPLE_LCD_H_RES * 20);
-    esp_lcd_panel_swap_xy(panel_handle, true);
-    esp_lcd_panel_mirror(panel_handle, true, true);
+    // esp_lcd_panel_swap_xy(panel_handle, false);
+    // esp_lcd_panel_mirror(panel_handle, true, true);
     ESP_LOGI(TAG, "Register display driver to LVGL");
     lv_disp_drv_init(&disp_drv);
     disp_drv.hor_res = EXAMPLE_LCD_H_RES;
@@ -276,10 +279,11 @@ void app_main(void) {
     disp_drv.drv_update_cb = example_lvgl_port_update_callback;
     disp_drv.draw_buf = &disp_buf;
     disp_drv.user_data = panel_handle;
-    disp_drv.rotated = LV_DISP_ROT_90;
+    disp_drv.sw_rotate = 1;
+    disp_drv.rotated = LV_DISP_ROT_180;
     lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
-    esp_lcd_panel_swap_xy(panel_handle, true);
-    esp_lcd_panel_mirror(panel_handle, true, true);
+    // esp_lcd_panel_swap_xy(panel_handle, false);
+    // esp_lcd_panel_mirror(panel_handle, true, true);
     ESP_LOGI(TAG, "Install LVGL tick timer");
     const esp_timer_create_args_t lvgl_tick_timer_args = {
         .callback = &example_increase_lvgl_tick,
@@ -313,12 +317,13 @@ void app_main(void) {
     update_text_temp(temperature);
     update_text_humid(humidity);
 
-    xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
+    xTaskCreate(task_lvgl, "lvgl", 80960, disp, 20,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
     xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
     xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
     xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
+    xTaskCreate(task_time, "time", 4096,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -332,8 +337,8 @@ void task_aht20(void *pvParameters) {
 
 void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
-    panel1(scr);
     panel2(scr);
+    panel1(scr);
     set_weather(
         "{\"temp\":36,\"feelsLike\":37,\"text\":\"多云\",\"text_icon\":1,\"humidity\":45,\"vis\":30,\"cloud\":100}");
     while (1) {
@@ -368,6 +373,24 @@ static float bat;
 void task_bat(void *pv) {
     while (1) {
         read_cw2015_battery_quantity(&bat);
+        s5;
+    }
+}
+
+void task_time(void *pv) {
+    time_t now;
+    char strftime_buf[64];
+    struct tm timeinfo;
+    // 将时区设置为中国标准时间
+    setenv("TZ", "CST-8", 1);
+    tzset();
+    while (1) {
+        time(&now);
+        if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+            localtime_r(&now, &timeinfo);
+            strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+            update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        }
         s5;
     }
 }

@@ -1,4 +1,5 @@
 idf_component_register(SRCS
+        "font_big/number_16px.c"
         "font_big/number_24px.c"
         "font_big/number_40px.c"
         "font_big/number_48px.c"

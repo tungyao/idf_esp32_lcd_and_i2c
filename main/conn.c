@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "conn.h"
 
+#include <esp_netif_sntp.h>
 #include <esp_timer.h>
 #include <strings.h>
 #include <driver/gpio.h>
@@ -37,7 +38,7 @@ void conn_keys_init() {
     };
     gpio_config(&io_conf2);
 
-    key_queue = xQueueCreate(1, sizeof(uint32_t));
+    key_queue = xQueueCreate(2, sizeof(uint32_t));
     gpio_intr_enable(IO19);
     gpio_intr_enable(IO18);
 
@@ -111,7 +112,11 @@ void uart_event(char *data, int length) {
 
     // 设置地区 和风天气的地区id
     if (data[0] == 'l' && data[1] == 'o' && data[2] == 'c') {
-        store_data("he_loc", newdata);
+        store_data("loc", newdata);
+    }
+
+    if (data[0] == 'g' && data[1] == 'w' && data[2] == 'd') {
+        store_data("pwd", newdata);
     }
 }
 
@@ -151,9 +156,11 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
-        sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        sntp_setservername(0, "120.25.115.20");
-        sntp_init();
+        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("120.25.115.20");
+        esp_netif_sntp_init(&config);
+        if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
+            ESP_LOGI(CONN_TAG, "Failed to update system time within 10s timeout");
+        }
     }
 }
 
@@ -296,8 +303,9 @@ int tcp_client2(void) {
         return 0;
     }
     p = read_data("pwd", pwd, &pwd_length);
+    ESP_LOGE("PWD", "'%s'%d", pwd, pwd_length);
 
-    if (length == 0 || p == ESP_ERR_NVS_NOT_FOUND) {
+    if (pwd_length == 0 || p == ESP_ERR_NVS_NOT_FOUND) {
         return 0;
     }
     tcp_client_t client;
@@ -314,6 +322,8 @@ int tcp_client2(void) {
     request[0] = 'n';
     request[1] = 'o';
     request[2] = 'w';
+    length--;
+    pwd_length--;
     for (int i = 0; i < length; ++i) {
         request[i + 3] = data[i];
     }
@@ -331,9 +341,6 @@ int tcp_client2(void) {
     char rx_buffer[512];
     memset(rx_buffer, 0, sizeof(rx_buffer));
     ret = tcp_client_receive(&client, rx_buffer, sizeof(rx_buffer));
-    if (ret != ESP_OK) {
-        ESP_LOGE("TCP", "Failed to receive response");
-    }
     ESP_LOGI("TCP", "rece %s", rx_buffer);
     tcp_client_cleanup(&client);
 
@@ -380,12 +387,13 @@ void start_wifi() {
     ESP_LOGI("GET_WIFI", "'%s'", pwd);
 
     while (1) {
-        wifi_init_sta(ssid, pwd);
         if (get_wifi_conn() == 0) {
+            wifi_init_sta(ssid, pwd);
             ESP_LOGI("WIFI", "restart conn wifi");
             vTaskDelay(pdMS_TO_TICKS(5000));
         } else {
             tcp_client2();
+            vTaskDelay(pdMS_TO_TICKS(60000 * 60));
             break;
         }
     }
