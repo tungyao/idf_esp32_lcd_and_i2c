@@ -62,6 +62,7 @@ lv_img_dsc_t* cal_thi(float t, float h);
 
 // 初始化字库
 LV_FONT_DECLARE(weather_chinese)
+LV_FONT_DECLARE(number_24px)
 LV_FONT_DECLARE(number_48px)
 LV_FONT_DECLARE(number_40px)
 LV_FONT_DECLARE(emoji)
@@ -152,6 +153,8 @@ static const lv_img_dsc_t* weather_mapping_obj[] = {
     &wi_windsock,
     &wi_dust
 };
+
+#define COLOR_LITTLE_BLACK lv_color_hex(0x8B8989)
 
 lv_img_dsc_t* get_weather_img_from_text(int);
 #ifdef __cplusplus
