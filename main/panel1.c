@@ -256,7 +256,6 @@ void set_weather(char* data)
     weather_obj.temp = cJSON_GetObjectItem(obj, "temp");
     weather_obj.text_icon = cJSON_GetObjectItem(obj, "text_icon");
     weather_obj.feels_like = cJSON_GetObjectItem(obj, "feelsLike");
-    weather_obj.icon = cJSON_GetObjectItem(obj, "icon");
     weather_obj.text = cJSON_GetObjectItem(obj, "text");
     weather_obj.humidity = cJSON_GetObjectItem(obj, "humidity");
     weather_obj.vis = cJSON_GetObjectItem(obj, "vis");

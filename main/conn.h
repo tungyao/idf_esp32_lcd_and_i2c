@@ -121,5 +121,5 @@ void wifi_init_sta(char *ssid, char *pwd);
 #define HOST_IP_ADDR "192.168.100.186"
 
 int tcp_client2(void);
-
+void start_wifi();
 #endif

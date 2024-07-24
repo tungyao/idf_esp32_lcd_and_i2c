@@ -1,4 +1,5 @@
 idf_component_register(SRCS
+        "font_big/number_24px.c"
         "font_big/number_40px.c"
         "font_big/number_48px.c"
         "font_big/weather_chinese.c"
@@ -24,7 +25,9 @@ idf_component_register(SRCS
         "weather_big/wi_thunderstorms.c"
         "weather_big/wi_thunderstorms_rain.c"
         "weather_big/wi_wind.c"
+        "weather_big/wi_hurricane.c"
         "weather_big/wi_windsock.c"
+        "weather_big/wi_partly_cloudy_day_rain.c"
         "tcp_client.c"
         "conn.c"
         "panel1.c"

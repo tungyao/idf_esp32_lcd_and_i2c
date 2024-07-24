@@ -75,14 +75,12 @@ void listen_config_key() {
                     buttonPressCount++;
                     if (buttonPressCount == 2) {
                         buttonPressCount = 0; // 重置点击计数
-                        change_input_mode();
-                        // tcp_client2();
                         ESP_LOGI("RX_TASK_TAG", "double click IO19");
-                        // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+                        esp_wifi_deinit();
                     }
                 } else {
                     buttonPressCount = 1; // 重置点击计数
-                    switch_panel();
+                    tcp_client2();
                 }
                 lastButtonPressTime = currentTime; // 更新最后按下时间
             } else {
@@ -284,17 +282,21 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 int tcp_client2(void) {
     char data[16];
     size_t length = sizeof(data);
-
+    char pwd[10];
+    size_t pwd_length = sizeof(pwd);
     // 读取本地存储的地区代码
     err_t p = read_data("loc", data, &length);
 
     if (length == 0 || p == ESP_ERR_NVS_NOT_FOUND) {
         return 0;
     }
+    p = read_data("pwd", pwd, &pwd_length);
 
-
+    if (length == 0 || p == ESP_ERR_NVS_NOT_FOUND) {
+        return 0;
+    }
     tcp_client_t client;
-    tcp_client_init(&client, "192.168.100.186", 10000);
+    tcp_client_init(&client, "47.109.140.80", 10001);
 
     esp_err_t ret = tcp_client_connect(&client);
     if (ret != ESP_OK) {
@@ -302,13 +304,18 @@ int tcp_client2(void) {
         vTaskDelete(NULL);
     }
 
-    char request[24];
+    char request[32];
     memset(request, 0, sizeof(request));
     request[0] = 'n';
     request[1] = 'o';
     request[2] = 'w';
-    for (int i = 3; i < length; ++i) {
-        request[i] = data[i - 3];
+    for (int i = 0; i < length; ++i) {
+        request[i + 3] = data[i];
+    }
+    request[length + 3] = 1;
+
+    for (int i = 0; i < pwd_length; ++i) {
+        request[length + 4 + i] = pwd[i];
     }
     ret = tcp_client_send(&client, request);
     if (ret != ESP_OK) {
@@ -316,7 +323,7 @@ int tcp_client2(void) {
         vTaskDelete(NULL);
     }
 
-    char rx_buffer[1024];
+    char rx_buffer[512];
     memset(rx_buffer, 0, sizeof(rx_buffer));
     ret = tcp_client_receive(&client, rx_buffer, sizeof(rx_buffer));
     if (ret != ESP_OK) {
@@ -326,7 +333,55 @@ int tcp_client2(void) {
     tcp_client_cleanup(&client);
 
     // 开始解析
-
+    set_weather(rx_buffer);
 
     return 0;
+}
+
+void start_wifi() {
+    char data[64];
+    size_t length = sizeof(data);
+
+    while (true) {
+        uint8_t p = read_data("wifi", data, &length);
+        if (p == 0 || length == 0) {
+            ESP_LOGI("TASK_CONN", "get wifi data failed");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        } else {
+            break;
+        }
+    }
+    ESP_LOGI("TASK_CONN", "get wifi data len %d", length);
+    char ssid[32];
+    char pwd[32];
+    int p = 0;
+    memset(ssid, 0, sizeof(ssid));
+    memset(pwd, 0, sizeof(pwd));
+    for (int i = 0; i < length; i++) {
+        if (data[i] == ',') {
+            p = i;
+            continue;
+        }
+        if (data[i] == '\0') {
+            continue;
+        }
+        if (p == 0) {
+            ssid[i] = data[i];
+        } else {
+            pwd[i - p - 1] = data[i];
+        }
+    }
+    ESP_LOGI("GET_WIFI", "'%s'", ssid);
+    ESP_LOGI("GET_WIFI", "'%s'", pwd);
+
+    while (1) {
+        wifi_init_sta(ssid, pwd);
+        if (get_wifi_conn() == 0) {
+            ESP_LOGI("WIFI", "restart conn wifi");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+        } else {
+            tcp_client2();
+            break;
+        }
+    }
 }

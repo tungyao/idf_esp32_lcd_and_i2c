@@ -4,7 +4,7 @@
  * Opts: --bpp 4 --size 24 --no-compress --font MiSansLatin-Light.ttf --range 48,49,50,51,52,53,54,55,56,57,46,45,176,67,37,107,109 --format lvgl -o number_24px.c
  ******************************************************************************/
 
-#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+#ifdef IDF_VER
 #include "lvgl.h"
 #else
 #include "lvgl/lvgl.h"

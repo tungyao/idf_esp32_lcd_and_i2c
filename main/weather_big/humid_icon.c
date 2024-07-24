@@ -6,7 +6,7 @@
     #endif
 #endif
 
-#if defined(LV_LVGL_H_INCLUDE_SIMPLE)
+#if defined(IDF_VER)
     #include "lvgl.h"
 #else
     #include "lvgl/lvgl.h"

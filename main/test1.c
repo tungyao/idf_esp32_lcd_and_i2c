@@ -308,12 +308,12 @@ void app_main(void) {
     update_meter_value(temperature);
     update_text_temp(temperature);
     update_text_humid(humidity);
-    xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
 
+    xTaskCreate(task_lvgl, "lvgl", 80960, disp, 1,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    // xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
-    // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+    xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
+    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -327,19 +327,19 @@ void task_aht20(void *pvParameters) {
 
 void task_lvgl(void *pvParameters) {
     lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
-    // panel1(scr);
+    panel1(scr);
     panel2(scr);
     set_weather(
-        "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":\"多云\",\"text_icon\":0,\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}");
+        "{\"temp\":36,\"feelsLike\":37,\"text\":\"多云\",\"text_icon\":1,\"humidity\":45,\"vis\":30,\"cloud\":100}");
     while (1) {
         // lv_label_set_text_fmt(temp_label, "%-5s:  %2.2f deg", "temp", temperature);
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
-        // update_meter_value(temperature);
-        // update_text_temp(temperature);
-        // update_text_humid(humidity);
-        // update_emoji(temperature,humidity);
+        update_meter_value(temperature);
+        update_text_temp(temperature);
+        update_text_humid(humidity);
+        update_emoji(temperature, humidity);
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(200));
         // The task running lv_timer_handler should have lower priority than that running `lv_tick_inc`
         lv_timer_handler();
     }
@@ -354,51 +354,5 @@ void task_listen_key(void *pv) {
 }
 
 void task_conn(void *pv) {
-    char data[64];
-    size_t length = sizeof(data);
-
-    while (true) {
-        uint8_t p = read_data("wifi", data, &length);
-        if (p == 0 || length == 0) {
-            ESP_LOGI("TASK_CONN", "get wifi data failed");
-            s5;
-        } else {
-            break;
-        }
-    }
-    ESP_LOGI("TASK_CONN", "get wifi data len %d", length);
-    char ssid[32];
-    char pwd[32];
-    int p = 0;
-    memset(ssid, 0, sizeof(ssid));
-    memset(pwd, 0, sizeof(pwd));
-    for (int i = 0; i < length; i++) {
-        if (data[i] == ',') {
-            p = i;
-            continue;
-        }
-        if (data[i] == '\0') {
-            continue;
-        }
-        if (p == 0) {
-            ssid[i] = data[i];
-        } else {
-            pwd[i - p - 1] = data[i];
-        }
-    }
-    ESP_LOGI("GET_WIFI", "'%s'", ssid);
-    ESP_LOGI("GET_WIFI", "'%s'", pwd);
-
-    while (1) {
-        wifi_init_sta(ssid, pwd);
-        if (get_wifi_conn() == 0) {
-            ESP_LOGI("WIFI", "restart conn wifi");
-            vTaskDelay(pdMS_TO_TICKS(5000));
-        } else {
-            tcp_client2();
-            break;
-        }
-    }
-    vTaskDelete(NULL);
-    // vTaskDelay(pdMS_TO_TICKS(5000));
+    start_wifi();
 }
