@@ -8,24 +8,26 @@ extern "C" {
 #include "lvgl/lvgl.h"
 #endif
 #include <cJSON.h>
-
-static lv_obj_t* temp_label;
-static lv_obj_t* humid;
+#include <driver/gpio.h>
 
 
-static lv_obj_t* g_meter;
-static lv_meter_scale_t* scale1 = NULL;
-static lv_meter_indicator_t* indix;
+static lv_obj_t *temp_label;
+static lv_obj_t *humid;
 
 
-static lv_obj_t* g_meter2;
-static lv_meter_scale_t* scale2 = NULL;
-static lv_meter_indicator_t* indix2;
+static lv_obj_t *g_meter;
+static lv_meter_scale_t *scale1 = NULL;
+static lv_meter_indicator_t *indix;
 
 
-void meter1(lv_obj_t* scr);
+static lv_obj_t *g_meter2;
+static lv_meter_scale_t *scale2 = NULL;
+static lv_meter_indicator_t *indix2;
 
-void meter2(lv_obj_t* scr);
+
+void meter1(lv_obj_t *scr);
+
+void meter2(lv_obj_t *scr);
 
 void update_meter_value(int32_t value);
 
@@ -49,15 +51,16 @@ void update_text_humid(
 
 static int point = 0;
 
-static lv_obj_t* page1 = NULL;
-static lv_obj_t* page2 = NULL;
+static lv_obj_t *page1 = NULL;
+static lv_obj_t *page2 = NULL;
 
-void panel1(lv_obj_t* scr);
-void panel2(lv_obj_t* scr);
+void panel1(lv_obj_t *scr);
+
+void panel2(lv_obj_t *scr);
 
 void switch_panel();
 
-lv_img_dsc_t* cal_thi(float t, float h);
+lv_img_dsc_t *cal_thi(float t, float h);
 
 // 初始化字库
 LV_FONT_DECLARE(weather_chinese)
@@ -91,39 +94,48 @@ LV_IMG_DECLARE(wi_thunderstorms_rain)
 LV_IMG_DECLARE(wi_dust)
 LV_IMG_DECLARE(wi_hurricane)
 
+static uint8_t is_diplay = 1;
 
-void set_weather(char* data);
-static lv_obj_t* main_weather;
-static lv_obj_t* emoji_obj;
-void unicode_to_utf8(unsigned int codepoint, char* out);
+void shutdown_lcd();
+
+void set_weather(char *data);
+
+static lv_obj_t *main_weather;
+static lv_obj_t *emoji_obj;
+
+void unicode_to_utf8(unsigned int codepoint, char *out);
+
 void update_emoji(float t, float h);
+
 void update_time(int h, int m, int s);
+
 void update_bat(int b);
+void update_led();
 // cjson
-static lv_obj_t* time_obj;
-static lv_obj_t* bat_obj;
-static lv_obj_t* temp_obj;
-static lv_obj_t* weather_ch_obj;
-static lv_obj_t* feels_like_obj;
-static lv_obj_t* text_obj;
-static lv_obj_t* humidityN_obj;
-static lv_obj_t* vis_obj;
-static lv_obj_t* cloud_obj;
+ static    lv_obj_t * led_obj ;
+static lv_obj_t *time_obj;
+static lv_obj_t *bat_obj;
+static lv_obj_t *temp_obj;
+static lv_obj_t *weather_ch_obj;
+static lv_obj_t *feels_like_obj;
+static lv_obj_t *text_obj;
+static lv_obj_t *humidityN_obj;
+static lv_obj_t *vis_obj;
+static lv_obj_t *cloud_obj;
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-struct _weather_ovj
-{
-    cJSON* temp;
-    cJSON* text_icon;
-    cJSON* feels_like;
-    cJSON* text;
-    cJSON* humidity;
-    cJSON* vis;
-    cJSON* cloud;
+struct _weather_ovj {
+    cJSON *temp;
+    cJSON *text_icon;
+    cJSON *feels_like;
+    cJSON *text;
+    cJSON *humidity;
+    cJSON *vis;
+    cJSON *cloud;
 } static weather_obj;
 
-static const lv_img_dsc_t* weather_mapping_obj[] = {
+static const lv_img_dsc_t *weather_mapping_obj[] = {
     &wi_clear_day, //0
     &wi_cloudy, //1
     &wi_partly_cloudy_day_rain, //2
@@ -142,9 +154,10 @@ static const lv_img_dsc_t* weather_mapping_obj[] = {
     &wi_hurricane //17
 };
 
+
 #define COLOR_LITTLE_BLACK lv_color_hex(0x8B8989)
 
-lv_img_dsc_t* get_weather_img_from_text(int);
+lv_img_dsc_t *get_weather_img_from_text(int);
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

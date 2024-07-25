@@ -4,8 +4,7 @@
 #include <stdio.h>
 
 
-void meter1(lv_obj_t* scr)
-{
+void meter1(lv_obj_t *scr) {
     // 创建中间那个温度数字
     temp_label = lv_label_create(scr);
     lv_obj_set_style_text_font(temp_label, &number_48px, LV_STATE_DEFAULT);
@@ -13,7 +12,7 @@ void meter1(lv_obj_t* scr)
     lv_label_set_text_fmt(temp_label, "%d%s", 25, "°");
 
     // 显示temperature文字
-    lv_obj_t* temp_label_t = lv_label_create(scr);
+    lv_obj_t *temp_label_t = lv_label_create(scr);
     lv_obj_set_style_text_font(temp_label_t, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(temp_label_t, lv_palette_main(LV_PALETTE_GREY), 0);
     lv_obj_align(temp_label_t, LV_TEXT_ALIGN_CENTER, 0, 166);
@@ -22,7 +21,7 @@ void meter1(lv_obj_t* scr)
 
     // 显示温度计图标
     LV_IMG_DECLARE(humid_icon)
-    lv_obj_t* img1 = lv_img_create(scr);
+    lv_obj_t *img1 = lv_img_create(scr);
     lv_img_set_src(img1, &humid_icon);
     lv_obj_set_pos(img1, 40, 188);
     lv_obj_set_size(img1, 22, 22);
@@ -79,8 +78,7 @@ void meter1(lv_obj_t* scr)
                                      0, 0);
 }
 
-void meter2(lv_obj_t* scr)
-{
+void meter2(lv_obj_t *scr) {
     humid = lv_label_create(scr);
     lv_obj_set_style_text_font(humid, &lv_font_montserrat_32, LV_STATE_DEFAULT);
     lv_obj_align(humid, LV_TEXT_ALIGN_CENTER, 10, 40);
@@ -96,16 +94,14 @@ void meter2(lv_obj_t* scr)
 }
 
 
-void update_meter_value(int32_t value)
-{
+void update_meter_value(int32_t value) {
     if (g_meter == NULL) return;
     lv_meter_set_indicator_start_value(g_meter, indix, value);
     lv_meter_set_indicator_end_value(g_meter, indix, 50);
     lv_obj_invalidate(g_meter); // 刷新仪表盘
 }
 
-void update_meter_value2(int32_t value)
-{
+void update_meter_value2(int32_t value) {
     if (g_meter2 == NULL) return;
     lv_meter_set_indicator_value(g_meter2, indix2, value);
     lv_obj_invalidate(g_meter2); // 刷新仪表盘
@@ -117,8 +113,7 @@ void update_text_temp(
 #else
     int value
 #endif
-)
-{
+) {
 #ifdef IDF_VER
     lv_label_set_text_fmt(temp_label, "%2.1f°", value);
 #else
@@ -132,8 +127,7 @@ void update_text_humid(
 #else
     int value
 #endif
-)
-{
+) {
 #ifdef IDF_VER
     lv_label_set_text_fmt(humid, "%2.1f%%", value);
 #else
@@ -141,8 +135,7 @@ void update_text_humid(
 #endif
 }
 
-void panel1(lv_obj_t* scr)
-{
+void panel1(lv_obj_t *scr) {
     page1 = lv_obj_create(scr);
     lv_obj_set_style_line_width(page1, 0, 0);
     lv_obj_set_style_border_width(page1, 0, 0);
@@ -150,38 +143,43 @@ void panel1(lv_obj_t* scr)
     lv_obj_set_style_radius(page1, 0, 0);
     lv_obj_set_size(page1, LV_HOR_RES, LV_VER_RES);
     lv_obj_center(page1);
-    time_obj = lv_label_create(scr);
+
+    time_obj = lv_label_create(lv_scr_act());
     lv_obj_set_style_text_font(time_obj, &number_16px, LV_STATE_DEFAULT);
-    update_time(9, 9, 0);
+    update_time(0, 0, 0);
     lv_obj_set_pos(time_obj, 40, 5);
-    bat_obj = lv_bar_create(scr);
+    bat_obj = lv_bar_create(lv_scr_act());
     lv_obj_set_size(bat_obj, 38, 2);
     lv_obj_set_pos(bat_obj, 40, 25);
 
+    led_obj = lv_led_create(lv_scr_act());
+    lv_obj_set_pos(led_obj, 280, 5);
+    lv_led_off(led_obj);
     meter1(page1);
     // meter2(page1);
 }
 
-void update_time(int h, int m, int s)
-{
-    lv_label_set_text_fmt(time_obj, "%d:%d", h, m);
+void update_led() {
+    lv_led_toggle(led_obj);
 }
 
-void update_bat(int b)
-{
+void update_time(int h, int m, int s) {
+    lv_label_set_text_fmt(time_obj, "%d:%d:%d", h, m, s);
+}
+
+void update_bat(int b) {
     lv_bar_set_value(bat_obj, 70, LV_ANIM_OFF);
 }
 
 #include "cJSON.h"
 
-void panel2(lv_obj_t* scr)
-{
+void panel2(lv_obj_t *scr) {
     page2 = lv_obj_create(scr);
     lv_obj_set_style_line_width(page2, 0, 0);
     lv_obj_set_style_border_width(page2, 0, 0);
     lv_obj_set_style_pad_all(page2, 0, 0);
     lv_obj_set_style_radius(page2, 0, 0);
-    lv_obj_align(page2, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_center(page2);
     lv_obj_set_size(page2, LV_HOR_RES, LV_VER_RES);
 
     temp_obj = lv_label_create(page2);
@@ -193,26 +191,26 @@ void panel2(lv_obj_t* scr)
 
     // 创建右边那一部分
 
-    lv_obj_t* feels_label = lv_label_create(page2);
+    lv_obj_t *feels_label = lv_label_create(page2);
     lv_obj_set_style_text_font(feels_label, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(feels_label, COLOR_LITTLE_BLACK, 0);
     lv_obj_set_pos(feels_label, 200, 30);
     lv_label_set_text(feels_label, "feels");
 
-    lv_obj_t* humidityN_obj_label = lv_label_create(page2);
+    lv_obj_t *humidityN_obj_label = lv_label_create(page2);
     lv_obj_set_style_text_font(humidityN_obj_label, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(humidityN_obj_label, COLOR_LITTLE_BLACK, 0);
     lv_obj_set_pos(humidityN_obj_label, 200, 30 + 44);
     lv_label_set_text(humidityN_obj_label, "humidity");
 
 
-    lv_obj_t* vis_obj_label = lv_label_create(page2);
+    lv_obj_t *vis_obj_label = lv_label_create(page2);
     lv_obj_set_style_text_font(vis_obj_label, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(vis_obj_label, COLOR_LITTLE_BLACK, 0);
     lv_obj_set_pos(vis_obj_label, 200, 30 + 44 + 44);
     lv_label_set_text(vis_obj_label, "vis");
 
-    lv_obj_t* cloud_obj_label = lv_label_create(page2);
+    lv_obj_t *cloud_obj_label = lv_label_create(page2);
     lv_obj_set_style_text_font(cloud_obj_label, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(cloud_obj_label, COLOR_LITTLE_BLACK, 0);
     lv_obj_set_pos(cloud_obj_label, 200, 30 + 44 + 44 + 44);
@@ -258,7 +256,7 @@ void panel2(lv_obj_t* scr)
     lv_style_set_line_width(&style_line, 2);
     lv_style_set_line_color(&style_line, lv_color_hex(0xeeeeee));
     lv_style_set_line_rounded(&style_line, true);
-    lv_obj_t* line1;
+    lv_obj_t *line1;
     line1 = lv_line_create(page2);
     lv_line_set_points(line1, line_points, 2); /*Set the points*/
     lv_obj_add_style(line1, &style_line, 0);
@@ -266,12 +264,11 @@ void panel2(lv_obj_t* scr)
 }
 
 
-const char* example =
-    "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":0,\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}";
+const char *example =
+        "{\"temp\":35,\"feelsLike\":38,\"icon\":61697,\"text\":0,\"wind360\":180,\"windDir\":\"南风\",\"windScale\":2,\"windSpeed\":6,\"humidity\":46,\"precip\":\"0.0\",\"pressure\":967,\"vis\":30,\"cloud\":91,\"dew\":23}";
 
-void set_weather(char* data)
-{
-    cJSON* obj = cJSON_Parse(data);
+void set_weather(char *data) {
+    cJSON *obj = cJSON_Parse(data);
     weather_obj.temp = cJSON_GetObjectItem(obj, "temp");
     weather_obj.text_icon = cJSON_GetObjectItem(obj, "text_icon");
     weather_obj.feels_like = cJSON_GetObjectItem(obj, "feelsLike");
@@ -299,89 +296,75 @@ void set_weather(char* data)
     // free(data);
 }
 
-void switch_panel()
-{
-    if (point == 0)
-    {
+void switch_panel() {
+    if (point == 0) {
         lv_obj_add_flag(page1, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(page2, LV_OBJ_FLAG_HIDDEN);
         point = 1;
-    }
-    else
-    {
+    } else {
         lv_obj_add_flag(page2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(page1, LV_OBJ_FLAG_HIDDEN);
         point = 0;
     }
 }
 
-void unicode_to_utf8(unsigned int codepoint, char* out)
-{
-    if (codepoint <= 0x7F)
-    {
+void unicode_to_utf8(unsigned int codepoint, char *out) {
+    if (codepoint <= 0x7F) {
         // 1-byte sequence
-        *out++ = (char)(codepoint & 0xFF);
+        *out++ = (char) (codepoint & 0xFF);
         *out = '\0';
-    }
-    else if (codepoint <= 0x7FF)
-    {
+    } else if (codepoint <= 0x7FF) {
         // 2-byte sequence
-        *out++ = (char)(0xC0 | ((codepoint >> 6) & 0x1F));
-        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out++ = (char) (0xC0 | ((codepoint >> 6) & 0x1F));
+        *out++ = (char) (0x80 | (codepoint & 0x3F));
         *out = '\0';
-    }
-    else if (codepoint <= 0xFFFF)
-    {
+    } else if (codepoint <= 0xFFFF) {
         // 3-byte sequence
-        *out++ = (char)(0xE0 | ((codepoint >> 12) & 0x0F));
-        *out++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out++ = (char) (0xE0 | ((codepoint >> 12) & 0x0F));
+        *out++ = (char) (0x80 | ((codepoint >> 6) & 0x3F));
+        *out++ = (char) (0x80 | (codepoint & 0x3F));
         *out = '\0';
-    }
-    else if (codepoint <= 0x1FFFFF)
-    {
+    } else if (codepoint <= 0x1FFFFF) {
         // 4-byte sequence
-        *out++ = (char)(0xF0 | ((codepoint >> 18) & 0x07));
-        *out++ = (char)(0x80 | ((codepoint >> 12) & 0x3F));
-        *out++ = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        *out++ = (char)(0x80 | (codepoint & 0x3F));
+        *out++ = (char) (0xF0 | ((codepoint >> 18) & 0x07));
+        *out++ = (char) (0x80 | ((codepoint >> 12) & 0x3F));
+        *out++ = (char) (0x80 | ((codepoint >> 6) & 0x3F));
+        *out++ = (char) (0x80 | (codepoint & 0x3F));
         *out = '\0';
     }
 }
 
-lv_img_dsc_t* cal_thi(float t, float h)
-{
+lv_img_dsc_t *cal_thi(float t, float h) {
     float a = (1.8 * t + 32) - (0.55 - 0.55 * h * 0.01) * (1.8 * t - 26);
-    if (a < 40)
-    {
+    if (a < 40) {
         return &g626;
-    }
-    else if (a >= 40 && a < 55)
-    {
+    } else if (a >= 40 && a < 55) {
         return &g600;
-    }
-    else if (a >= 55 && a < 70)
-    {
+    } else if (a >= 55 && a < 70) {
         return &g36;
-    }
-    else if (a >= 70 && a < 75)
-    {
+    } else if (a >= 70 && a < 75) {
         return &g110;
-    }
-    else if (a >= 75)
-    {
+    } else if (a >= 75) {
         return &g616;
     }
     return &g626;
 }
 
-void update_emoji(float t, float h)
-{
-    lv_img_dsc_t* a = cal_thi(t, h);
+void update_emoji(float t, float h) {
+    lv_img_dsc_t *a = cal_thi(t, h);
     lv_img_set_src(emoji_obj, a);
 }
 
-lv_img_dsc_t* get_weather_img_from_text(int c)
-{
+lv_img_dsc_t *get_weather_img_from_text(int c) {
     return weather_mapping_obj[c];
+}
+
+void shutdown_lcd() {
+    if (is_diplay == 1) {
+        gpio_set_level(2, 1);
+        is_diplay = 0;
+    } else {
+        is_diplay = 1;
+        gpio_set_level(2, 0);
+    }
 }

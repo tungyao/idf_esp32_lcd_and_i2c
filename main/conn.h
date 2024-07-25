@@ -35,6 +35,7 @@ static int buttonPressCount = 0;
 #define DOUBLE_CLICK_TIME 100 // 双击时间阈值，单位毫秒
 #define LONG_PRESS_TIME 3000
 static const int RX_BUF_SIZE = 1024;
+void task_conn(void *pv);
 
 static void IRAM_ATTR key_isr_handler(void *arg);
 
@@ -63,7 +64,7 @@ void listen_uart(void *arg);
 
 #define EXAMPLE_ESP_WIFI_SSID      "ssid"
 #define EXAMPLE_ESP_WIFI_PASS      "password"
-#define EXAMPLE_ESP_MAXIMUM_RETRY  10
+#define EXAMPLE_ESP_MAXIMUM_RETRY  2
 
 #if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
 #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HUNT_AND_PECK
@@ -95,6 +96,7 @@ void listen_uart(void *arg);
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
+static TaskHandle_t wifi_task_handler;
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -121,5 +123,5 @@ void wifi_init_sta(char *ssid, char *pwd);
 #define HOST_IP_ADDR "192.168.100.186"
 
 int tcp_client2(void);
-void start_wifi();
+void start_wifi(void *pv);
 #endif

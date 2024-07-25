@@ -78,11 +78,19 @@ void listen_config_key() {
                     if (buttonPressCount == 2) {
                         buttonPressCount = 0; // 重置点击计数
                         ESP_LOGI("RX_TASK_TAG", "double click IO19");
-                        esp_wifi_deinit();
+                        if (wifi_task_handler == NULL) {
+                            task_conn(NULL);
+                        } else {
+                            vTaskDelete(wifi_task_handler);
+                            esp_wifi_deinit();
+                            wifi_conned = 0;
+                            wifi_task_handler = NULL;
+                        }
+                        update_led();
                     }
                 } else {
                     buttonPressCount = 1; // 重置点击计数
-                    tcp_client2();
+                    shutdown_lcd();
                 }
                 lastButtonPressTime = currentTime; // 更新最后按下时间
             } else {
@@ -93,6 +101,10 @@ void listen_config_key() {
             }
         }
     }
+}
+
+void task_conn(void *pv) {
+    xTaskCreate(start_wifi, "wifi", 4096,NULL, 23, &wifi_task_handler);
 }
 
 // 使用uart和esp32交互
@@ -155,16 +167,13 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(CONN_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-
-        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("120.25.115.20");
-        esp_netif_sntp_init(&config);
-        if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
-            ESP_LOGI(CONN_TAG, "Failed to update system time within 10s timeout");
-        }
     }
 }
 
 void wifi_init_sta(char *ssid, char *pwd) {
+    if (ssid[0] == 0 || pwd[0] == 0) {
+        return;
+    }
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -213,10 +222,15 @@ void wifi_init_sta(char *ssid, char *pwd) {
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(CONN_TAG, "connected to ap SSID:%s password:%s", ssid, pwd);
         wifi_conned = 1;
+        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("120.25.115.20");
+        ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
+        ESP_ERROR_CHECK(esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)));
     } else if (bits & WIFI_FAIL_BIT
     ) {
+        wifi_conned = 0;
         ESP_LOGI(CONN_TAG, "Failed to connect to SSID:%s, password:%s", ssid, pwd);
     } else {
+        wifi_conned = 0;
         ESP_LOGE(CONN_TAG, "UNEXPECTED EVENT");
     }
 }
@@ -225,69 +239,6 @@ int get_wifi_conn() {
     return wifi_conned;
 }
 
-// MQTT
-static void log_error_if_nonzero(const char *message, int error_code) {
-    if (error_code != 0) {
-        ESP_LOGE(CONN_TAG, "Last error %s: 0x%x", message, error_code);
-    }
-}
-
-// MQTT事件处理函数
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    ESP_LOGD(CONN_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
-    switch ((esp_mqtt_event_id_t) event_id) {
-        case MQTT_EVENT_CONNECTED:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_CONNECTED");
-            msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-            ESP_LOGI(CONN_TAG, "sent publish successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-            ESP_LOGI(CONN_TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-            ESP_LOGI(CONN_TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-            msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-            ESP_LOGI(CONN_TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
-            break;
-        case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_DISCONNECTED");
-            break;
-
-        case MQTT_EVENT_SUBSCRIBED:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-            msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-            ESP_LOGI(CONN_TAG, "sent publish successful, msg_id=%d", msg_id);
-            break;
-        case MQTT_EVENT_UNSUBSCRIBED:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-            break;
-        case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-            break;
-        case MQTT_EVENT_DATA:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_DATA");
-            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-            printf("DATA=%.*s\r\n", event->data_len, event->data);
-            break;
-        case MQTT_EVENT_ERROR:
-            ESP_LOGI(CONN_TAG, "MQTT_EVENT_ERROR");
-            if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
-                log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
-                log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
-                log_error_if_nonzero("captured as transport's socket errno",
-                                     event->error_handle->esp_transport_sock_errno);
-                ESP_LOGI(CONN_TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
-            }
-            break;
-        default:
-            ESP_LOGI(CONN_TAG, "Other event id:%d", event->event_id);
-            break;
-    }
-}
 
 #include "cJSON.h"
 
@@ -350,7 +301,7 @@ int tcp_client2(void) {
     return 0;
 }
 
-void start_wifi() {
+void start_wifi(void *pv) {
     char data[64];
     size_t length = sizeof(data);
 
@@ -385,16 +336,17 @@ void start_wifi() {
     }
     ESP_LOGI("GET_WIFI", "'%s'", ssid);
     ESP_LOGI("GET_WIFI", "'%s'", pwd);
-
+    uint8_t i = 0;
     while (1) {
+        i++;
+        if (i > 10) {
+            break;
+        }
         if (get_wifi_conn() == 0) {
             wifi_init_sta(ssid, pwd);
             ESP_LOGI("WIFI", "restart conn wifi");
             vTaskDelay(pdMS_TO_TICKS(5000));
-        } else {
-            tcp_client2();
-            vTaskDelay(pdMS_TO_TICKS(60000 * 60));
-            break;
         }
     }
+    vTaskDelete(NULL);
 }

@@ -45,7 +45,6 @@ void task_lvgl(void *pvParameters);
 
 void task_listen_key(void *pv);
 
-void task_conn(void *pv);
 
 void task_time(void *pv);
 
@@ -320,10 +319,10 @@ void app_main(void) {
     xTaskCreate(task_lvgl, "lvgl", 80960, disp, 20,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    xTaskCreate(task_conn, "conn", 8096,NULL, 20,NULL);
     xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
     xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
     xTaskCreate(task_time, "time", 4096,NULL, 24,NULL);
+    task_conn(NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -349,7 +348,7 @@ void task_lvgl(void *pvParameters) {
         update_text_humid(humidity);
         update_emoji(temperature, humidity);
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         // The task running lv_timer_handler should have lower priority than that running `lv_tick_inc`
         lv_timer_handler();
     }
@@ -363,9 +362,6 @@ void task_listen_key(void *pv) {
     listen_config_key();
 }
 
-void task_conn(void *pv) {
-    start_wifi();
-}
 
 #include "cw2015.h"
 static float bat;
@@ -378,19 +374,18 @@ void task_bat(void *pv) {
 }
 
 void task_time(void *pv) {
-    time_t now;
-    char strftime_buf[64];
-    struct tm timeinfo;
     // 将时区设置为中国标准时间
+
     setenv("TZ", "CST-8", 1);
     tzset();
+    struct tm timeinfo;
     while (1) {
+        time_t now;
         time(&now);
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
             localtime_r(&now, &timeinfo);
-            strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
             update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
         }
-        s5;
+        s1;
     }
 }
