@@ -38,7 +38,8 @@ static  const char *TAG = "test1";
 // aht20
 #define AHT20_ADDR 0x38
 #define AHT20_PIN  12
-
+#include "panel1.h"
+#include "sto.h"
 void task_aht20(void *pvParameters);
 
 void task_lvgl(void *pvParameters);
@@ -95,8 +96,7 @@ static void aht20_read_data() {
 
 
 
-#include "panel1.h"
-#include "sto.h"
+
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
 void app_main(void) {
     // 初始化内部存储
@@ -111,8 +111,7 @@ void app_main(void) {
     gpio_set_level(AHT20_PIN, 1);
 
     init_lcd();
-
-
+    lv_obj_t *scr = lv_disp_get_scr_act(get_disp());
 
 
     // Set UART configuration
@@ -128,13 +127,13 @@ void app_main(void) {
     // Install UART driver
     uart_driver_install(UART_NUM_0, 128 * 2, 0, 0, NULL, 0);
 
-    xTaskCreate(task_lvgl, "lvgl", 80960, get_disp(), 1,NULL);
+    xTaskCreate(task_lvgl, "lvgl", 80960, scr, 1,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     // xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+    // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
     xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
-    xTaskCreate(task_time, "time", 4096,NULL, 24,NULL);
-    task_conn(NULL);
+    xTaskCreate(task_time, "time", 4096,NULL, 15,NULL);
+    // task_conn(NULL);
 }
 
 void task_aht20(void *pvParameters) {
@@ -147,9 +146,9 @@ void task_aht20(void *pvParameters) {
 
 
 void task_lvgl(void *pvParameters) {
-    lv_obj_t *scr = lv_disp_get_scr_act(pvParameters);
-    panel2(scr);
-    panel1(scr);
+    panel3(pvParameters);
+    panel2(pvParameters);
+    panel1(pvParameters);
     set_weather(
         "{\"temp\":36,\"feelsLike\":37,\"text\":\"多云\",\"text_icon\":1,\"humidity\":45,\"vis\":30,\"cloud\":100}");
     while (1) {
@@ -192,11 +191,13 @@ void task_time(void *pv) {
     tzset();
     struct tm timeinfo;
     while (1) {
-        time_t now;
-        time(&now);
+        ESP_LOGI(TAG,"sntp status %d", sntp_get_sync_status());
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+            time_t now;
+            time(&now);
             localtime_r(&now, &timeinfo);
             update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            ESP_LOGI(TAG, "The current time is: %02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
         }
         s1;
     }

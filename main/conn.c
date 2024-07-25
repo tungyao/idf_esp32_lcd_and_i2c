@@ -103,7 +103,7 @@ void listen_config_key() {
 }
 
 void task_conn(void *pv) {
-    xTaskCreate(start_wifi, "wifi", 4096,NULL, 23, &wifi_task_handler);
+    xTaskCreate(start_wifi, "wifi", 4096,NULL, 2, &wifi_task_handler);
 }
 
 // 使用uart和esp32交互
@@ -165,6 +165,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         ESP_LOGI(CONN_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
+
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
@@ -221,9 +222,6 @@ void wifi_init_sta(char *ssid, char *pwd) {
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(CONN_TAG, "connected to ap SSID:%s password:%s", ssid, pwd);
         wifi_conned = 1;
-        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("120.25.115.20");
-        ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
-        ESP_ERROR_CHECK(esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)));
     } else if (bits & WIFI_FAIL_BIT
     ) {
         wifi_conned = 0;
@@ -238,10 +236,16 @@ int get_wifi_conn() {
     return wifi_conned;
 }
 
+void set_wifi_conn(int i) {
+    wifi_conned = i;
+}
 
 #include "cJSON.h"
 
 int tcp_client2(void) {
+    if (wifi_conned == 0) {
+        return 0;
+    }
     char data[16];
     size_t length = sizeof(data);
     char pwd[10];
@@ -264,7 +268,7 @@ int tcp_client2(void) {
     esp_err_t ret = tcp_client_connect(&client);
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to connect to server");
-        vTaskDelete(NULL);
+        return 0;
     }
 
     char request[32];
@@ -285,7 +289,7 @@ int tcp_client2(void) {
     ret = tcp_client_send(&client, request);
     if (ret != ESP_OK) {
         ESP_LOGE("TCP", "Failed to send request");
-        vTaskDelete(NULL);
+        return 0;
     }
 
     char rx_buffer[512];
@@ -297,7 +301,7 @@ int tcp_client2(void) {
     // 开始解析
     set_weather(rx_buffer);
 
-    return 0;
+    return 1;
 }
 
 void start_wifi(void *pv) {
@@ -341,11 +345,25 @@ void start_wifi(void *pv) {
         if (i > 10) {
             break;
         }
-        if (get_wifi_conn() == 0) {
+        if (wifi_conned == 0) {
             wifi_init_sta(ssid, pwd);
-            ESP_LOGI("WIFI", "restart conn wifi");
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            if (wifi_conned == 0) {
+                ESP_LOGI("WIFI", "restart conn wifi");
+                vTaskDelay(pdMS_TO_TICKS(5000));
+            } else {
+                break;
+            }
         }
+    }
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "223.5.5.5");
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
+    if (sntp_enabled()) {
+        sntp_stop();
+    }
+    ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
+    if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
+        ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
     }
     vTaskDelete(NULL);
 }

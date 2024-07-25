@@ -35,6 +35,7 @@ static int buttonPressCount = 0;
 #define DOUBLE_CLICK_TIME 100 // 双击时间阈值，单位毫秒
 #define LONG_PRESS_TIME 3000
 static const int RX_BUF_SIZE = 1024;
+
 void task_conn(void *pv);
 
 static void IRAM_ATTR key_isr_handler(void *arg);
@@ -107,7 +108,10 @@ static TaskHandle_t wifi_task_handler;
 static int wifi_conned = 0;
 static int s_retry_num = 0;
 
+void set_wifi_conn(int i);
+
 int get_wifi_conn();
+
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data);
 
@@ -123,5 +127,6 @@ void wifi_init_sta(char *ssid, char *pwd);
 #define HOST_IP_ADDR "192.168.100.186"
 
 int tcp_client2(void);
+
 void start_wifi(void *pv);
 #endif

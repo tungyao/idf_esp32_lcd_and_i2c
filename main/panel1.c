@@ -7,10 +7,15 @@
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
 #include <esp_log.h>
+#include <esp_netif_sntp.h>
+#include <esp_sntp.h>
 #include <esp_timer.h>
 #include <math.h>
 #include <stdio.h>
 #include <driver/spi_common.h>
+#include <lwip/apps/sntp.h>
+
+#include "conn.h"
 
 
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata,
@@ -28,9 +33,9 @@ static void example_increase_lvgl_tick(void *arg) {
 
 
 int read_key(void) {
-    if (gpio_get_level(19) == 0) {
+    if (gpio_get_level(19) == 1) {
         return LV_KEY_NEXT;
-    } else if (gpio_get_level(18) == 0) {
+    } else if (gpio_get_level(18) == 1) {
         return LV_KEY_ENTER;
     } else {
         return -1;
@@ -59,10 +64,64 @@ static void next_panel_cb(lv_event_t *e) {
     }
 }
 
-void init_lcd() {
-    static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
-    static lv_disp_drv_t disp_drv; // contains callback functions
+static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map) {
+    esp_lcd_panel_handle_t panel_handle = (esp_lcd_panel_handle_t) drv->user_data;
+    int offsetx1 = area->x1;
+    int offsetx2 = area->x2;
+    int offsety1 = area->y1;
+    int offsety2 = area->y2;
+    // copy a buffer's content to a specific area of the display
+    esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
+}
 
+static void example_lvgl_port_update_callback(lv_disp_drv_t *drv) {
+    esp_lcd_panel_handle_t panel_handle = (esp_lcd_panel_handle_t) drv->user_data;
+
+    switch (drv->rotated) {
+        case LV_DISP_ROT_NONE:
+            // Rotate LCD display
+            esp_lcd_panel_swap_xy(panel_handle, false);
+            esp_lcd_panel_mirror(panel_handle, true, false);
+#if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+        // Rotate LCD touch
+        esp_lcd_touch_set_mirror_y(tp, false);
+        esp_lcd_touch_set_mirror_x(tp, false);
+#endif
+            break;
+        case LV_DISP_ROT_90:
+            // Rotate LCD display
+            esp_lcd_panel_swap_xy(panel_handle, true);
+            esp_lcd_panel_mirror(panel_handle, true, true);
+#if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+        // Rotate LCD touch
+        esp_lcd_touch_set_mirror_y(tp, false);
+        esp_lcd_touch_set_mirror_x(tp, false);
+#endif
+            break;
+        case LV_DISP_ROT_180:
+            // Rotate LCD display
+            esp_lcd_panel_swap_xy(panel_handle, false);
+            esp_lcd_panel_mirror(panel_handle, false, true);
+#if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+        // Rotate LCD touch
+        esp_lcd_touch_set_mirror_y(tp, false);
+        esp_lcd_touch_set_mirror_x(tp, false);
+#endif
+            break;
+        case LV_DISP_ROT_270:
+            // Rotate LCD display
+            esp_lcd_panel_swap_xy(panel_handle, true);
+            esp_lcd_panel_mirror(panel_handle, false, false);
+#if CONFIG_EXAMPLE_LCD_TOUCH_ENABLED
+        // Rotate LCD touch
+        esp_lcd_touch_set_mirror_y(tp, false);
+        esp_lcd_touch_set_mirror_x(tp, false);
+#endif
+            break;
+    }
+}
+
+void init_lcd() {
     ESP_LOGI("PANEL", "Turn off LCD backlight");
     gpio_config_t bk_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
@@ -139,7 +198,8 @@ void init_lcd() {
     disp_drv.draw_buf = &disp_buf;
     disp_drv.user_data = panel_handle;
     disp_drv.sw_rotate = 1;
-
+    disp_drv.flush_cb = example_lvgl_flush_cb;
+    disp_drv.drv_update_cb = example_lvgl_port_update_callback;
     disp_drv.rotated = LV_DISP_ROT_180;
     disp = lv_disp_drv_register(&disp_drv);
     // esp_lcd_panel_swap_xy(panel_handle, false);
@@ -149,7 +209,6 @@ void init_lcd() {
     esp_lcd_panel_mirror(panel_handle, false, true);
     // 注册回调按键汇报
     // lv_indev_t *btn_index = NULL;
-    lv_indev_drv_t indev_drv_key;
     lv_indev_drv_init(&indev_drv_key);
     indev_drv_key.read_cb = button_read;
     indev_drv_key.type = LV_INDEV_TYPE_KEYPAD;
@@ -158,7 +217,7 @@ void init_lcd() {
     group = lv_group_create();
     lv_group_set_default(group);
     lv_indev_set_group(btn_index, group);
-    lv_group_focus_obj(group); //分组聚焦到对象
+    // lv_group_focus_obj(group); //分组聚焦到对象
     lv_group_set_editing(group, true); //编辑模式
 
 
@@ -179,8 +238,8 @@ void init_lcd() {
     lv_obj_set_pos(btn2, -10, -10);
 
     lv_group_add_obj(group, btn2);
-
-    // xTaskCreate(task_lvgl, "lvgl", 80960, disp, 20,NULL);
+    lv_group_focus_obj(btn2); //分组聚焦到对象
+    ESP_LOGI("PANEL", "----------");
 }
 
 lv_disp_t *get_disp() {
@@ -433,20 +492,25 @@ static void wifi_switch_event_handler(lv_event_t *e) {
     lv_obj_t *obj = lv_event_get_target(e);
     if (code == LV_EVENT_VALUE_CHANGED) {
         if (lv_obj_has_state(obj, LV_STATE_CHECKED)) {
-            LV_LOG_USER("1");
+            task_conn(NULL);
+            ESP_LOGI("PANEL", "started wifi");
         } else {
-            LV_LOG_USER("0");
+            esp_wifi_stop();
+            esp_wifi_deinit();
+            set_wifi_conn(0);
+            ESP_LOGI("PANEL", "deinit wifi");
         }
     }
 }
+
 static void display_switch_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t *obj = lv_event_get_target(e);
     if (code == LV_EVENT_VALUE_CHANGED) {
         if (lv_obj_has_state(obj, LV_STATE_CHECKED)) {
-            LV_LOG_USER("1");
+            gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 0);
         } else {
-            LV_LOG_USER("0");
+            gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 1);
         }
     }
 }
@@ -455,22 +519,39 @@ static void sync_time_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_CLICKED) {
-        LV_LOG_USER("Clicked");
+        sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        sntp_setservername(0, "223.5.5.5");
+        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
+        if (sntp_enabled()) {
+            sntp_stop();
+        }
+        ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
+        if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
+            ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
+        }
     }
 }
 
-void panel3(lv_obj_t* scr)
-{
-    lv_obj_t* page3 = lv_obj_create(scr);
+static void sync_weather_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_CLICKED) {
+        if (tcp_client2() == 0) {
+        }
+    }
+}
+
+void panel3(lv_obj_t *scr) {
+    page3 = lv_obj_create(scr);
     lv_obj_set_style_line_width(page3, 0, 0);
     lv_obj_set_style_border_width(page3, 0, 0);
     // lv_obj_set_style_pad_all(page3, 0, 0);
     lv_obj_set_style_radius(page3, 0, 0);
     lv_obj_align(page3, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_set_size(page3, LV_HOR_RES, LV_VER_RES);
-    lv_obj_t* sw;
+    lv_obj_t *sw;
 
-    lv_obj_t* wifi_label = lv_label_create(page3);
+    lv_obj_t *wifi_label = lv_label_create(page3);
     lv_obj_set_style_text_font(wifi_label, &lv_font_montserrat_20, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(wifi_label, lv_color_hex(0x4F4F4F), 0);
     lv_label_set_text(wifi_label, "Wi-Fi");
@@ -478,12 +559,14 @@ void panel3(lv_obj_t* scr)
     lv_obj_align(wifi_label, LV_ALIGN_LEFT_MID, 45, -60);
     lv_obj_align(sw, LV_ALIGN_LEFT_MID, 45, -30);
 
-    lv_obj_add_state(sw, LV_STATE_CHECKED);
+    if (get_wifi_conn()) {
+        lv_obj_add_state(sw, LV_STATE_CHECKED);
+    }
     lv_obj_add_event_cb(sw, wifi_switch_event_handler, LV_EVENT_ALL, NULL);
 
-    lv_obj_t* label;
+    lv_obj_t *label;
 
-    lv_obj_t* btn1 = lv_btn_create(page3);
+    lv_obj_t *btn1 = lv_btn_create(page3);
     lv_obj_add_event_cb(btn1, sync_time_event_handler, LV_EVENT_ALL, NULL);
     lv_obj_align(btn1, LV_ALIGN_RIGHT_MID, -45, -30);
 
@@ -491,29 +574,39 @@ void panel3(lv_obj_t* scr)
     lv_label_set_text(label, "Sync Time");
     lv_obj_center(label);
 
+    lv_obj_t *label_weather;
+
+    lv_obj_t *btn2 = lv_btn_create(page3);
+    lv_obj_add_event_cb(btn2, sync_weather_event_handler, LV_EVENT_ALL, NULL);
+    lv_obj_align(btn2, LV_ALIGN_RIGHT_MID, -25, 10);
+
+    label_weather = lv_label_create(btn2);
+    lv_label_set_text(label_weather, "Sync Weather");
+    lv_obj_center(label_weather);
 
 
     lv_obj_t *display_label = lv_label_create(page3);
     lv_obj_set_style_text_font(display_label, &lv_font_montserrat_20, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(display_label, lv_color_hex(0x4F4F4F), 0);
     lv_label_set_text(display_label, "Display");
-    lv_obj_t * dsw = lv_switch_create(page3);
+    lv_obj_t *dsw = lv_switch_create(page3);
     lv_obj_align(display_label, LV_ALIGN_LEFT_MID, 45, 15);
     lv_obj_align(dsw, LV_ALIGN_LEFT_MID, 45, 45);
-    lv_obj_add_state(dsw, LV_STATE_CHECKED);
+    if (!gpio_get_level(EXAMPLE_PIN_NUM_BK_LIGHT)) {
+        lv_obj_add_state(dsw, LV_STATE_CHECKED);
+    }
     lv_obj_add_event_cb(dsw, display_switch_event_handler, LV_EVENT_ALL, NULL);
 
 
     lv_group_add_obj(group, sw);
     lv_group_add_obj(group, btn1);
     lv_group_add_obj(group, dsw);
-
+    lv_group_add_obj(group, btn2);
 }
 
 
-
 void update_time(int h, int m, int s) {
-    lv_label_set_text_fmt(time_obj, "%d:%d:%d", h, m, s);
+    lv_label_set_text_fmt(time_obj, "%02d:%02d:%02d", h, m, s);
 }
 
 void update_bat(int b) {
@@ -552,9 +645,16 @@ void set_weather(char *data) {
 void switch_panel() {
     if (point == 0) {
         lv_obj_add_flag(page1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(page3, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(page2, LV_OBJ_FLAG_HIDDEN);
         point = 1;
+    } else if (point == 1) {
+        lv_obj_add_flag(page1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(page2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(page3, LV_OBJ_FLAG_HIDDEN);
+        point = 2;
     } else {
+        lv_obj_add_flag(page3, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(page2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(page1, LV_OBJ_FLAG_HIDDEN);
         point = 0;

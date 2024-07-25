@@ -33,6 +33,10 @@ static lv_group_t *group;
 
 void init_lcd();
 
+static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
+static lv_disp_drv_t disp_drv; // contains callback functions
+static lv_indev_drv_t indev_drv_key;
+
 static lv_disp_t *disp;
 
 lv_disp_t *get_disp();
@@ -79,6 +83,7 @@ static int point = 0;
 
 static lv_obj_t *page1 = NULL;
 static lv_obj_t *page2 = NULL;
+static lv_obj_t *page3 = NULL;
 
 void panel1(lv_obj_t *scr);
 
@@ -164,7 +169,7 @@ struct _weather_ovj {
     cJSON *cloud;
 } static weather_obj;
 
-static const lv_img_dsc_t* weather_mapping_obj[] = {
+static const lv_img_dsc_t *weather_mapping_obj[] = {
     &wi_clear_day, //0
     &wi_cloudy, //1
     &wi_partly_cloudy_day_rain, //2
