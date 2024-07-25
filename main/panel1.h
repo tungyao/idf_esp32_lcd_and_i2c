@@ -9,7 +9,33 @@ extern "C" {
 #endif
 #include <cJSON.h>
 #include <driver/gpio.h>
+#define LCD_HOST  SPI2_HOST
+#define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
+#define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
+#define EXAMPLE_LCD_BK_LIGHT_OFF_LEVEL !EXAMPLE_LCD_BK_LIGHT_ON_LEVEL
+#define EXAMPLE_PIN_NUM_SCLK           6
+#define EXAMPLE_PIN_NUM_MOSI           4
+#define EXAMPLE_PIN_NUM_MISO           -1
+#define EXAMPLE_PIN_NUM_LCD_DC         3
+#define EXAMPLE_PIN_NUM_LCD_RST        -1
+#define EXAMPLE_PIN_NUM_LCD_CS         5
+#define EXAMPLE_PIN_NUM_BK_LIGHT       2
+#define EXAMPLE_PIN_NUM_TOUCH_CS       -1
+#define EXAMPLE_LCD_H_RES               320
+#define EXAMPLE_LCD_V_RES              240
+#define EXAMPLE_LCD_CMD_BITS           8
+#define EXAMPLE_LCD_PARAM_BITS         8
 
+#define EXAMPLE_LVGL_TICK_PERIOD_MS    2
+
+static lv_indev_t *btn_index = NULL;
+static lv_group_t *group;
+
+void init_lcd();
+
+static lv_disp_t *disp;
+
+lv_disp_t *get_disp();
 
 static lv_obj_t *temp_label;
 static lv_obj_t *humid;
@@ -57,6 +83,8 @@ static lv_obj_t *page2 = NULL;
 void panel1(lv_obj_t *scr);
 
 void panel2(lv_obj_t *scr);
+
+void panel3(lv_obj_t *scr);
 
 void switch_panel();
 
@@ -110,9 +138,10 @@ void update_emoji(float t, float h);
 void update_time(int h, int m, int s);
 
 void update_bat(int b);
-void update_led();
+
+
 // cjson
- static    lv_obj_t * led_obj ;
+static lv_obj_t *led_obj;
 static lv_obj_t *time_obj;
 static lv_obj_t *bat_obj;
 static lv_obj_t *temp_obj;
@@ -135,7 +164,7 @@ struct _weather_ovj {
     cJSON *cloud;
 } static weather_obj;
 
-static const lv_img_dsc_t *weather_mapping_obj[] = {
+static const lv_img_dsc_t* weather_mapping_obj[] = {
     &wi_clear_day, //0
     &wi_cloudy, //1
     &wi_partly_cloudy_day_rain, //2

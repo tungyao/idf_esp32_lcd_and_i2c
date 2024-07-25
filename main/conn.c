@@ -37,15 +37,15 @@ void conn_keys_init() {
         .pull_up_en = 0, // Enable pull-up
     };
     gpio_config(&io_conf2);
-
-    key_queue = xQueueCreate(2, sizeof(uint32_t));
-    gpio_intr_enable(IO19);
-    gpio_intr_enable(IO18);
-
-    gpio_install_isr_service(0);
-    // gpio_isr_register(IO19, key_isr_handler, NULL, 0, 0);
-    gpio_isr_handler_add(IO19, key_isr_handler, (void *) IO19);
-    gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
+    //
+    // key_queue = xQueueCreate(2, sizeof(uint32_t));
+    // gpio_intr_enable(IO19);
+    // gpio_intr_enable(IO18);
+    //
+    // gpio_install_isr_service(0);
+    // // gpio_isr_register(IO19, key_isr_handler, NULL, 0, 0);
+    // gpio_isr_handler_add(IO19, key_isr_handler, (void *) IO19);
+    // gpio_isr_handler_add(IO18, key_isr_handler, (void *) IO18);
 }
 
 void change_input_mode() {
@@ -86,7 +86,6 @@ void listen_config_key() {
                             wifi_conned = 0;
                             wifi_task_handler = NULL;
                         }
-                        update_led();
                     }
                 } else {
                     buttonPressCount = 1; // 重置点击计数
