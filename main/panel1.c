@@ -1,6 +1,13 @@
-﻿#include "freertos/FreeRTOS.h"
+﻿#include "panel1.h"
+
+#include <math.h>
+#include <stdio.h>
+
+
+#ifdef IDF_VER
+#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "panel1.h"
+#include <driver/spi_common.h>
 
 #include <esp_heap_caps.h>
 #include <esp_lcd_panel_io.h>
@@ -10,13 +17,7 @@
 #include <esp_netif_sntp.h>
 #include <esp_sntp.h>
 #include <esp_timer.h>
-#include <math.h>
-#include <stdio.h>
-#include <driver/spi_common.h>
-#include <lwip/apps/sntp.h>
-
 #include "conn.h"
-
 
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata,
                                             void *user_ctx) {
@@ -34,12 +35,10 @@ static void example_increase_lvgl_tick(void *arg) {
 
 int read_key(void) {
     if (gpio_get_level(19) == 1) {
-
         return LV_KEY_NEXT;
     } else if (gpio_get_level(18) == 1) {
         if (is_diplay == 0) {
             shutdown_lcd();
-
         }
         return LV_KEY_ENTER;
     } else {
@@ -61,13 +60,6 @@ void button_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     data->key = last_btn; /*Save the last button*/
 }
 
-
-static void next_panel_cb(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED) {
-        switch_panel();
-    }
-}
 
 static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map) {
     esp_lcd_panel_handle_t panel_handle = (esp_lcd_panel_handle_t) drv->user_data;
@@ -218,13 +210,17 @@ void init_lcd() {
     indev_drv_key.read_cb = button_read;
     indev_drv_key.type = LV_INDEV_TYPE_KEYPAD;
     btn_index = lv_indev_drv_register(&indev_drv_key);
-
     group = lv_group_create();
     lv_group_set_default(group);
     lv_indev_set_group(btn_index, group);
     // lv_group_focus_obj(group); //分组聚焦到对象
     lv_group_set_editing(group, true); //编辑模式
 
+    group = lv_group_create();
+    lv_group_set_default(group);
+    lv_indev_set_group(btn_index, group);
+    // lv_group_focus_obj(group); //分组聚焦到对象
+    lv_group_set_editing(group, true); //编辑模式
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {
         .callback = &example_increase_lvgl_tick,
@@ -238,17 +234,29 @@ void init_lcd() {
 
 
     // 创建一个隐形的按钮
-    lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
-    lv_obj_add_event_cb(btn2, next_panel_cb, LV_EVENT_ALL, NULL);
-    lv_obj_set_pos(btn2, -10, -10);
+}
+#endif
 
-    lv_group_add_obj(group, btn2);
-    lv_group_focus_obj(btn2); //分组聚焦到对象
-    ESP_LOGI("PANEL", "----------");
+static void next_panel_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        switch_panel();
+    }
 }
 
 lv_disp_t *get_disp() {
     return disp;
+}
+
+void init_sim() {
+    lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
+    lv_obj_add_event_cb(btn2, next_panel_cb, LV_EVENT_ALL, NULL);
+    lv_obj_set_pos(btn2, 280, 10);
+
+#ifdef IDF_VER
+    lv_group_add_obj(group, btn2);
+    lv_group_focus_obj(btn2); //分组聚焦到对象
+#endif
 }
 
 void meter1(lv_obj_t *scr) {
@@ -396,7 +404,7 @@ void panel1(lv_obj_t *scr) {
     update_time(0, 0, 0);
     lv_obj_set_pos(time_obj, 40, 5);
     bat_obj = lv_bar_create(lv_scr_act());
-    lv_obj_set_size(bat_obj, 38, 2);
+    lv_obj_set_size(bat_obj, 65, 4);
     lv_obj_set_pos(bat_obj, 40, 25);
     meter1(page1);
 }
@@ -497,13 +505,17 @@ static void wifi_switch_event_handler(lv_event_t *e) {
     lv_obj_t *obj = lv_event_get_target(e);
     if (code == LV_EVENT_VALUE_CHANGED) {
         if (lv_obj_has_state(obj, LV_STATE_CHECKED)) {
+#ifdef IDF_VER
             task_conn(NULL);
             ESP_LOGI("PANEL", "started wifi");
+#endif
         } else {
+#ifdef IDF_VER
             esp_wifi_stop();
             esp_wifi_deinit();
             set_wifi_conn(0);
             ESP_LOGI("PANEL", "deinit wifi");
+#endif
         }
     }
 }
@@ -513,9 +525,13 @@ static void display_switch_event_handler(lv_event_t *e) {
     lv_obj_t *obj = lv_event_get_target(e);
     if (code == LV_EVENT_VALUE_CHANGED) {
         if (lv_obj_has_state(obj, LV_STATE_CHECKED)) {
+#ifdef IDF_VER
             gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 0);
+#endif
         } else {
+#ifdef IDF_VER
             gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 1);
+#endif
         }
     }
 }
@@ -524,16 +540,18 @@ static void sync_time_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_CLICKED) {
-        sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        sntp_setservername(0, "223.5.5.5");
+#ifdef IDF_VER
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "223.5.5.5");
         esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
-        if (sntp_enabled()) {
-            sntp_stop();
+        if (esp_sntp_enabled()) {
+            esp_sntp_stop();
         }
         ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
         if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
             ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
         }
+#endif
     }
 }
 
@@ -541,8 +559,9 @@ static void sync_weather_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_CLICKED) {
-        if (tcp_client2() == 0) {
-        }
+#ifdef IDF_VER
+        tcp_client2();
+#endif
     }
 }
 
@@ -564,7 +583,13 @@ void panel3(lv_obj_t *scr) {
     lv_obj_align(wifi_label, LV_ALIGN_LEFT_MID, 45, -60);
     lv_obj_align(sw, LV_ALIGN_LEFT_MID, 45, -30);
 
-    if (get_wifi_conn()) {
+    if (
+#ifdef IDF_VER
+        get_wifi_conn()
+#else
+        1
+#endif
+    ) {
         lv_obj_add_state(sw, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(sw, wifi_switch_event_handler, LV_EVENT_ALL, NULL);
@@ -583,7 +608,7 @@ void panel3(lv_obj_t *scr) {
 
     lv_obj_t *btn2 = lv_btn_create(page3);
     lv_obj_add_event_cb(btn2, sync_weather_event_handler, LV_EVENT_ALL, NULL);
-    lv_obj_align(btn2, LV_ALIGN_RIGHT_MID, -25, 10);
+    lv_obj_align(btn2, LV_ALIGN_RIGHT_MID, -20, 20);
 
     label_weather = lv_label_create(btn2);
     lv_label_set_text(label_weather, "Sync Weather");
@@ -597,7 +622,13 @@ void panel3(lv_obj_t *scr) {
     display_sw = lv_switch_create(page3);
     lv_obj_align(display_label, LV_ALIGN_LEFT_MID, 45, 15);
     lv_obj_align(display_sw, LV_ALIGN_LEFT_MID, 45, 45);
-    if (!gpio_get_level(EXAMPLE_PIN_NUM_BK_LIGHT)) {
+    if (
+#ifdef IDF_VER
+        !gpio_get_level(EXAMPLE_PIN_NUM_BK_LIGHT)
+#else
+        1
+#endif
+    ) {
         lv_obj_add_state(display_sw, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(display_sw, display_switch_event_handler, LV_EVENT_ALL, NULL);
@@ -719,12 +750,17 @@ lv_img_dsc_t *get_weather_img_from_text(int c) {
 
 void shutdown_lcd() {
     if (is_diplay == 1) {
+#ifdef IDF_VER
         gpio_set_level(2, 1);
+#endif
+
         is_diplay = 0;
         lv_obj_clear_state(display_sw, LV_STATE_CHECKED);
     } else {
-        is_diplay = 1;
+#ifdef IDF_VER
         gpio_set_level(2, 0);
+#endif
+        is_diplay = 1;
         lv_obj_add_state(display_sw, LV_STATE_CHECKED);
     }
 }

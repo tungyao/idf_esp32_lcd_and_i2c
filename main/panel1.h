@@ -4,11 +4,11 @@ extern "C" {
 #endif
 #ifdef IDF_VER
 #include "lvgl.h"
+#include <driver/gpio.h>
 #else
 #include "lvgl/lvgl.h"
 #endif
 #include <cJSON.h>
-#include <driver/gpio.h>
 #define LCD_HOST  SPI2_HOST
 #define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
 #define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
@@ -28,8 +28,8 @@ extern "C" {
 
 #define EXAMPLE_LVGL_TICK_PERIOD_MS    2
 
-static lv_indev_t *btn_index = NULL;
-static lv_group_t *group;
+static lv_indev_t* btn_index = NULL;
+static lv_group_t* group;
 
 void init_lcd();
 
@@ -37,27 +37,27 @@ static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) calle
 static lv_disp_drv_t disp_drv; // contains callback functions
 static lv_indev_drv_t indev_drv_key;
 
-static lv_disp_t *disp;
+static lv_disp_t* disp;
 
-lv_disp_t *get_disp();
+lv_disp_t* get_disp();
 
-static lv_obj_t *temp_label;
-static lv_obj_t *humid;
-
-
-static lv_obj_t *g_meter;
-static lv_meter_scale_t *scale1 = NULL;
-static lv_meter_indicator_t *indix;
+static lv_obj_t* temp_label;
+static lv_obj_t* humid;
 
 
-static lv_obj_t *g_meter2;
-static lv_meter_scale_t *scale2 = NULL;
-static lv_meter_indicator_t *indix2;
+static lv_obj_t* g_meter;
+static lv_meter_scale_t* scale1 = NULL;
+static lv_meter_indicator_t* indix;
 
 
-void meter1(lv_obj_t *scr);
+static lv_obj_t* g_meter2;
+static lv_meter_scale_t* scale2 = NULL;
+static lv_meter_indicator_t* indix2;
 
-void meter2(lv_obj_t *scr);
+
+void meter1(lv_obj_t* scr);
+
+void meter2(lv_obj_t* scr);
 
 void update_meter_value(int32_t value);
 
@@ -81,19 +81,22 @@ void update_text_humid(
 
 static int point = 0;
 
-static lv_obj_t *page1 = NULL;
-static lv_obj_t *page2 = NULL;
-static lv_obj_t *page3 = NULL;
+static lv_obj_t* page1 = NULL;
+static lv_obj_t* page2 = NULL;
+static lv_obj_t* page3 = NULL;
+static void next_panel_cb(lv_event_t* e);
 
-void panel1(lv_obj_t *scr);
+void init_sim();
 
-void panel2(lv_obj_t *scr);
+void panel1(lv_obj_t* scr);
 
-void panel3(lv_obj_t *scr);
+void panel2(lv_obj_t* scr);
+
+void panel3(lv_obj_t* scr);
 
 void switch_panel();
 
-lv_img_dsc_t *cal_thi(float t, float h);
+lv_img_dsc_t* cal_thi(float t, float h);
 
 // 初始化字库
 LV_FONT_DECLARE(weather_chinese)
@@ -131,12 +134,12 @@ static uint8_t is_diplay = 1;
 
 void shutdown_lcd();
 
-void set_weather(char *data);
+void set_weather(char* data);
 
-static lv_obj_t *main_weather;
-static lv_obj_t *emoji_obj;
+static lv_obj_t* main_weather;
+static lv_obj_t* emoji_obj;
 
-void unicode_to_utf8(unsigned int codepoint, char *out);
+void unicode_to_utf8(unsigned int codepoint, char* out);
 
 void update_emoji(float t, float h);
 
@@ -146,31 +149,32 @@ void update_bat(int b);
 
 
 // cjson
-static lv_obj_t *led_obj;
-static lv_obj_t *time_obj;
-static lv_obj_t *bat_obj;
-static lv_obj_t *temp_obj;
-static lv_obj_t *weather_ch_obj;
-static lv_obj_t *feels_like_obj;
-static lv_obj_t *text_obj;
-static lv_obj_t *humidityN_obj;
-static lv_obj_t *vis_obj;
-static lv_obj_t *cloud_obj;
-static lv_obj_t *display_sw;
+static lv_obj_t* led_obj;
+static lv_obj_t* time_obj;
+static lv_obj_t* bat_obj;
+static lv_obj_t* temp_obj;
+static lv_obj_t* weather_ch_obj;
+static lv_obj_t* feels_like_obj;
+static lv_obj_t* text_obj;
+static lv_obj_t* humidityN_obj;
+static lv_obj_t* vis_obj;
+static lv_obj_t* cloud_obj;
+static lv_obj_t* display_sw;
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-struct _weather_ovj {
-    cJSON *temp;
-    cJSON *text_icon;
-    cJSON *feels_like;
-    cJSON *text;
-    cJSON *humidity;
-    cJSON *vis;
-    cJSON *cloud;
+struct _weather_ovj
+{
+    cJSON* temp;
+    cJSON* text_icon;
+    cJSON* feels_like;
+    cJSON* text;
+    cJSON* humidity;
+    cJSON* vis;
+    cJSON* cloud;
 } static weather_obj;
 
-static const lv_img_dsc_t *weather_mapping_obj[] = {
+static const lv_img_dsc_t* weather_mapping_obj[] = {
     &wi_clear_day, //0
     &wi_cloudy, //1
     &wi_partly_cloudy_day_rain, //2
@@ -192,7 +196,7 @@ static const lv_img_dsc_t *weather_mapping_obj[] = {
 
 #define COLOR_LITTLE_BLACK lv_color_hex(0x8B8989)
 
-lv_img_dsc_t *get_weather_img_from_text(int);
+lv_img_dsc_t* get_weather_img_from_text(int);
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

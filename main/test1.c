@@ -200,14 +200,12 @@ void task_time(void *pv) {
     setenv("TZ", "CST-8", 1);
     tzset();
     while (1) {
-        struct tm timeinfo;
         ESP_LOGI(TAG, "sntp status %d", sntp_get_sync_status());
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
-            time_t now;
-            time(&now);
-            localtime_r(&now, &timeinfo);
-            update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-            ESP_LOGI(TAG, "The current time is: %02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            time_t rawtime;
+            time(&rawtime);
+            struct tm* timeinfo = localtime(&rawtime);
+            update_time(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
         }
         s1;
     }
