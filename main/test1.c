@@ -12,6 +12,7 @@
 #include <core/lv_disp.h>
 #include <core/lv_obj.h>
 #include <driver/spi_common.h>
+#include <driver/temperature_sensor.h>
 #include <driver/uart.h>
 #include <extra/widgets/meter/lv_meter.h>
 #include <hal/lv_hal_disp.h>
@@ -20,9 +21,10 @@
 #include "conn.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
+#include "cw2015.h"
 
 // 初始化i2c
-static  const char *TAG = "test1";
+static const char *TAG = "test1";
 
 #define I2C_MASTER_SCL_IO           1      /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           0      /*!< GPIO number used for I2C master data  */
@@ -40,6 +42,7 @@ static  const char *TAG = "test1";
 #define AHT20_PIN  12
 #include "panel1.h"
 #include "sto.h"
+
 void task_aht20(void *pvParameters);
 
 void task_lvgl(void *pvParameters);
@@ -71,30 +74,20 @@ static uint32_t temperature_raw;
 static uint32_t humidity_raw;
 static float temperature;
 static float humidity;
-#include "cw2015.h"
-static float bat;
 
 void task_bat(void *pv);
 
 #define s5 vTaskDelay(pdMS_TO_TICKS(5000))
 #define s1 vTaskDelay(pdMS_TO_TICKS(1000))
 static aht20_dev_handle_t aht20 = NULL;
+static temperature_sensor_handle_t temp_sensor = NULL;
 
 static void aht20_read_data() {
-    aht20_i2c_config_t i2c_conf = {
-        .i2c_port = I2C_MASTER_NUM,
-        .i2c_addr = AHT20_ADDRRES_0,
-    };
-    aht20_new_sensor(&i2c_conf, &aht20);
-
     aht20_read_temperature_humidity(aht20, &temperature_raw, &temperature, &humidity_raw, &humidity);
-    ESP_LOGI(TAG, "%-20s: %2.2f %%", "humidity is", humidity);
-    ESP_LOGI(TAG, "%-20s: %2.2f degC", "temperature is", temperature);
-    aht20_del_sensor(aht20);
+    float tsens_value;
+    ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_sensor, &tsens_value));
+    temperature = temperature + 0.9 * (tsens_value - temperature);
 }
-
-
-
 
 
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
@@ -103,6 +96,14 @@ void app_main(void) {
     conn_keys_init();
     sto_init();
     i2c_master_init();
+
+
+    temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 50);
+    ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor_config, &temp_sensor));
+    ESP_LOGI(TAG, "Enable temperature sensor");
+    ESP_ERROR_CHECK(temperature_sensor_enable(temp_sensor));
+    ESP_LOGI(TAG, "Read temperature");
+
     gpio_config_t aht20_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = 1ULL << AHT20_PIN
@@ -126,6 +127,15 @@ void app_main(void) {
 
     // Install UART driver
     uart_driver_install(UART_NUM_0, 128 * 2, 0, 0, NULL, 0);
+
+
+    // AHT20 INIT
+    aht20_i2c_config_t i2c_conf = {
+        .i2c_port = I2C_MASTER_NUM,
+        .i2c_addr = AHT20_ADDRRES_0,
+    };
+    aht20_new_sensor(&i2c_conf, &aht20);
+
 
     xTaskCreate(task_lvgl, "lvgl", 80960, scr, 1,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
@@ -159,7 +169,7 @@ void task_lvgl(void *pvParameters) {
         update_text_humid(humidity);
         update_emoji(temperature, humidity);
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         // The task running lv_timer_handler should have lower priority than that running `lv_tick_inc`
         lv_timer_handler();
     }
@@ -174,12 +184,12 @@ void task_listen_key(void *pv) {
 }
 
 
-#include "cw2015.h"
-static float bat;
+static uint32_t bat;
 
 void task_bat(void *pv) {
     while (1) {
         read_cw2015_battery_quantity(&bat);
+        update_bat(bat);
         s5;
     }
 }
@@ -189,9 +199,9 @@ void task_time(void *pv) {
 
     setenv("TZ", "CST-8", 1);
     tzset();
-    struct tm timeinfo;
     while (1) {
-        ESP_LOGI(TAG,"sntp status %d", sntp_get_sync_status());
+        struct tm timeinfo;
+        ESP_LOGI(TAG, "sntp status %d", sntp_get_sync_status());
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
             time_t now;
             time(&now);

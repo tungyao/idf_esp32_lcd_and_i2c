@@ -3,25 +3,22 @@
 #include "esp_err.h"
 #include "cw2015.h"
 
+#include <string.h>
+
 
 static const char *TAG = "CW2015_EXAMPLE";
 
-esp_err_t read_cw2015_battery_quantity(float *quantity) {
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (CW2015_ADDR | I2C_MASTER_WRITE), true);
-    i2c_master_write_byte(cmd, CW2015_BATTERY_QUANTITY_REG, true);
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(CW2015_I2C_NUM, cmd, 1000 / portTICK_PERIOD_MS);
-
-    uint8_t l = 0;
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (CW2015_ADDR | I2C_MASTER_READ), true);
-    i2c_master_read_byte(cmd, &l, I2C_MASTER_LAST_NACK);
-    i2c_master_stop(cmd);
-    esp_err_t ret = i2c_master_cmd_begin(CW2015_I2C_NUM, cmd, 1000 / portTICK_PERIOD_MS);
-    i2c_cmd_link_delete(cmd);
-    *quantity = (l / 256.0f) * 100.0f;
-    return ret;
+esp_err_t read_cw2015_battery_quantity(uint32_t *quantity) {
+    uint8_t data[2];
+    memset(data, 0, 2);
+    uint8_t reg = CW2015_WRITE_REG;
+    uint8_t reg_r = CW2015_READ_REG;
+    i2c_master_write_to_device(I2C_NUM_0, reg, (uint8_t *) 0x02, 1, 1000 / portTICK_PERIOD_MS);
+    i2c_master_read_from_device(I2C_NUM_0, reg_r, (uint8_t *) data[0], 1, 1000 / portTICK_PERIOD_MS);
+    i2c_master_write_to_device(I2C_NUM_0, reg, (uint8_t *) 0x03, 1, 1000 / portTICK_PERIOD_MS);
+    i2c_master_read_from_device(I2C_NUM_0, reg_r, (uint8_t *) data[1], 1, 1000 / portTICK_PERIOD_MS);
+    uint32_t ad_buff = 0;
+    ad_buff = (data[0] << 8) + data[1];
+    *quantity = ad_buff * 305 / 1000;
+    return 0;
 }

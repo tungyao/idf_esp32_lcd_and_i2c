@@ -34,8 +34,13 @@ static void example_increase_lvgl_tick(void *arg) {
 
 int read_key(void) {
     if (gpio_get_level(19) == 1) {
+
         return LV_KEY_NEXT;
     } else if (gpio_get_level(18) == 1) {
+        if (is_diplay == 0) {
+            shutdown_lcd();
+
+        }
         return LV_KEY_ENTER;
     } else {
         return -1;
@@ -589,18 +594,18 @@ void panel3(lv_obj_t *scr) {
     lv_obj_set_style_text_font(display_label, &lv_font_montserrat_20, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(display_label, lv_color_hex(0x4F4F4F), 0);
     lv_label_set_text(display_label, "Display");
-    lv_obj_t *dsw = lv_switch_create(page3);
+    display_sw = lv_switch_create(page3);
     lv_obj_align(display_label, LV_ALIGN_LEFT_MID, 45, 15);
-    lv_obj_align(dsw, LV_ALIGN_LEFT_MID, 45, 45);
+    lv_obj_align(display_sw, LV_ALIGN_LEFT_MID, 45, 45);
     if (!gpio_get_level(EXAMPLE_PIN_NUM_BK_LIGHT)) {
-        lv_obj_add_state(dsw, LV_STATE_CHECKED);
+        lv_obj_add_state(display_sw, LV_STATE_CHECKED);
     }
-    lv_obj_add_event_cb(dsw, display_switch_event_handler, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(display_sw, display_switch_event_handler, LV_EVENT_ALL, NULL);
 
 
     lv_group_add_obj(group, sw);
     lv_group_add_obj(group, btn1);
-    lv_group_add_obj(group, dsw);
+    lv_group_add_obj(group, display_sw);
     lv_group_add_obj(group, btn2);
 }
 
@@ -610,7 +615,7 @@ void update_time(int h, int m, int s) {
 }
 
 void update_bat(int b) {
-    lv_bar_set_value(bat_obj, 70, LV_ANIM_OFF);
+    lv_bar_set_value(bat_obj, b, LV_ANIM_OFF);
 }
 
 void set_weather(char *data) {
@@ -716,8 +721,10 @@ void shutdown_lcd() {
     if (is_diplay == 1) {
         gpio_set_level(2, 1);
         is_diplay = 0;
+        lv_obj_clear_state(display_sw, LV_STATE_CHECKED);
     } else {
         is_diplay = 1;
         gpio_set_level(2, 0);
+        lv_obj_add_state(display_sw, LV_STATE_CHECKED);
     }
 }

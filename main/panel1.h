@@ -156,6 +156,7 @@ static lv_obj_t *text_obj;
 static lv_obj_t *humidityN_obj;
 static lv_obj_t *vis_obj;
 static lv_obj_t *cloud_obj;
+static lv_obj_t *display_sw;
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif

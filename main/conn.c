@@ -299,6 +299,9 @@ int tcp_client2(void) {
     tcp_client_cleanup(&client);
 
     // 开始解析
+    if (rx_buffer[0] == 0) {
+        return 0;
+    }
     set_weather(rx_buffer);
 
     return 1;
