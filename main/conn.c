@@ -2,6 +2,7 @@
 #include "conn.h"
 
 #include <esp_netif_sntp.h>
+#include <esp_sntp.h>
 #include <esp_timer.h>
 #include <strings.h>
 #include <driver/gpio.h>
@@ -358,15 +359,16 @@ void start_wifi(void *pv) {
             }
         }
     }
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "223.5.5.5");
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "223.5.5.5");
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
-    if (sntp_enabled()) {
-        sntp_stop();
+    if (esp_sntp_enabled()) {
+        esp_sntp_stop();
     }
     ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
     if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
         ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
     }
+    tcp_client2();
     vTaskDelete(NULL);
 }

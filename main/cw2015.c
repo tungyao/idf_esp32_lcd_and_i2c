@@ -7,18 +7,30 @@
 
 
 static const char *TAG = "CW2015_EXAMPLE";
+// 转换电压值到实际电压
+static float convert_voltage(uint16_t voltage_raw) {
+    const float voltage_per_lsb = 0.000305; // 每单位代表的电压值
+    return voltage_raw * voltage_per_lsb;
+}
 
 esp_err_t read_cw2015_battery_quantity(uint32_t *quantity) {
     uint8_t data[2];
-    memset(data, 0, 2);
-    uint8_t reg = CW2015_WRITE_REG;
-    uint8_t reg_r = CW2015_READ_REG;
-    i2c_master_write_to_device(I2C_NUM_0, reg, (uint8_t *) 0x02, 1, 1000 / portTICK_PERIOD_MS);
-    i2c_master_read_from_device(I2C_NUM_0, reg_r, (uint8_t *) data[0], 1, 1000 / portTICK_PERIOD_MS);
-    i2c_master_write_to_device(I2C_NUM_0, reg, (uint8_t *) 0x03, 1, 1000 / portTICK_PERIOD_MS);
-    i2c_master_read_from_device(I2C_NUM_0, reg_r, (uint8_t *) data[1], 1, 1000 / portTICK_PERIOD_MS);
-    uint32_t ad_buff = 0;
-    ad_buff = (data[0] << 8) + data[1];
-    *quantity = ad_buff * 305 / 1000;
-    return 0;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, CW2015_ADDR << 1 | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, CW_VCELL_H, true); // 写入高字节寄存器地址
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, CW2015_ADDR << 1 | I2C_MASTER_READ, true);
+    i2c_master_read(cmd, data, 2, I2C_MASTER_ACK); // 先读取高字节，再读取低字节
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+    *quantity = convert_voltage(data);
+    i2c_cmd_link_delete(cmd);
+    ESP_LOGI(TAG, "Battery quantity: %d", (int)*quantity);
+    if (ret == ESP_OK) {
+        // 由于我们先读取的是高字节，所以data[0]是高字节，data[1]是低字节
+        return (data[0] << 8) | data[1];
+    } else {
+        return 0;
+    }
 }

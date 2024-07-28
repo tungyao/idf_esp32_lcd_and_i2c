@@ -86,7 +86,19 @@ static void aht20_read_data() {
     aht20_read_temperature_humidity(aht20, &temperature_raw, &temperature, &humidity_raw, &humidity);
     float tsens_value;
     ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_sensor, &tsens_value));
-    temperature = temperature + 0.9 * (tsens_value - temperature);
+    // float  t = temperature;
+    ESP_LOGI(TAG, "Temperature: %.2f C, tsens: %.2f %%", temperature, tsens_value);
+    if (tsens_value > temperature) {
+        if (get_input_mode() == 1) {
+            temperature = temperature - (tsens_value / 10) - 1;
+        } else {
+            temperature = temperature - (tsens_value / 10) - 1;
+        }
+        if (get_disp()) {
+            temperature--;
+        }
+    }
+    // temperature = t - 0.9 * (tsens_value - t);
 }
 
 
@@ -140,8 +152,8 @@ void app_main(void) {
     xTaskCreate(task_lvgl, "lvgl", 80960, scr, 1,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
     // xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    // xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
-    xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
+    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
+    // xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
     xTaskCreate(task_time, "time", 4096,NULL, 15,NULL);
     // task_conn(NULL);
 }
@@ -159,6 +171,7 @@ void task_lvgl(void *pvParameters) {
     panel3(pvParameters);
     panel2(pvParameters);
     panel1(pvParameters);
+    init_sim();
     set_weather(
         "{\"temp\":36,\"feelsLike\":37,\"text\":\"多云\",\"text_icon\":1,\"humidity\":45,\"vis\":30,\"cloud\":100}");
     while (1) {
@@ -169,7 +182,7 @@ void task_lvgl(void *pvParameters) {
         update_text_humid(humidity);
         update_emoji(temperature, humidity);
         // raise the task priority of LVGL and/or reduce the handler period can improve the performance
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(200));
         // The task running lv_timer_handler should have lower priority than that running `lv_tick_inc`
         lv_timer_handler();
     }
@@ -189,8 +202,8 @@ static uint32_t bat;
 void task_bat(void *pv) {
     while (1) {
         read_cw2015_battery_quantity(&bat);
-        update_bat(bat);
-        s5;
+        // update_bat(bat);
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
 
@@ -200,11 +213,11 @@ void task_time(void *pv) {
     setenv("TZ", "CST-8", 1);
     tzset();
     while (1) {
-        ESP_LOGI(TAG, "sntp status %d", sntp_get_sync_status());
-        if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+        ESP_LOGI(TAG, "sntp status %d", esp_sntp_get_sync_status());
+        if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
             time_t rawtime;
             time(&rawtime);
-            struct tm* timeinfo = localtime(&rawtime);
+            struct tm *timeinfo = localtime(&rawtime);
             update_time(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
         }
         s1;

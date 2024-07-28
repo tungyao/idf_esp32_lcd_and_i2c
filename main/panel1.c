@@ -216,11 +216,7 @@ void init_lcd() {
     // lv_group_focus_obj(group); //分组聚焦到对象
     lv_group_set_editing(group, true); //编辑模式
 
-    group = lv_group_create();
-    lv_group_set_default(group);
-    lv_indev_set_group(btn_index, group);
-    // lv_group_focus_obj(group); //分组聚焦到对象
-    lv_group_set_editing(group, true); //编辑模式
+
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {
         .callback = &example_increase_lvgl_tick,
@@ -231,6 +227,7 @@ void init_lcd() {
     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 2 * 1000));
 
     ESP_LOGI("PANEL", "Display LVGL Meter Widget");
+
 
 
     // 创建一个隐形的按钮
@@ -252,7 +249,9 @@ void init_sim() {
     lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
     lv_obj_add_event_cb(btn2, next_panel_cb, LV_EVENT_ALL, NULL);
     lv_obj_set_pos(btn2, 280, 10);
-
+     lv_obj_t * label4 = lv_label_create(btn2);
+    lv_label_set_text(label4, ">");
+    lv_obj_center(label4);
 #ifdef IDF_VER
     lv_group_add_obj(group, btn2);
     lv_group_focus_obj(btn2); //分组聚焦到对象
