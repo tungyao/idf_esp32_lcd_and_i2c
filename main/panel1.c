@@ -35,11 +35,11 @@ static void example_increase_lvgl_tick(void *arg) {
 
 int read_key(void) {
     if (gpio_get_level(19) == 1) {
+        if (!is_diplay) {
+            return -1;
+        }
         return LV_KEY_NEXT;
     } else if (gpio_get_level(18) == 1) {
-        if (is_diplay == 0) {
-            shutdown_lcd();
-        }
         return LV_KEY_ENTER;
     } else {
         return -1;
@@ -217,7 +217,6 @@ void init_lcd() {
     lv_group_set_editing(group, true); //编辑模式
 
 
-
     const esp_timer_create_args_t lvgl_tick_timer_args = {
         .callback = &example_increase_lvgl_tick,
         .name = "lvgl_tick"
@@ -227,7 +226,6 @@ void init_lcd() {
     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 2 * 1000));
 
     ESP_LOGI("PANEL", "Display LVGL Meter Widget");
-
 
 
     // 创建一个隐形的按钮
@@ -249,7 +247,7 @@ void init_sim() {
     lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
     lv_obj_add_event_cb(btn2, next_panel_cb, LV_EVENT_ALL, NULL);
     lv_obj_set_pos(btn2, 280, 10);
-     lv_obj_t * label4 = lv_label_create(btn2);
+    lv_obj_t *label4 = lv_label_create(btn2);
     lv_label_set_text(label4, ">");
     lv_obj_center(label4);
 #ifdef IDF_VER
@@ -415,6 +413,9 @@ void panel2(lv_obj_t *scr) {
     lv_obj_set_style_border_width(page2, 0, 0);
     lv_obj_set_style_pad_all(page2, 0, 0);
     lv_obj_set_style_radius(page2, 0, 0);
+    lv_obj_set_style_bg_color(page2, lv_color_hex(0xa6c1ee), 0);
+    lv_obj_set_style_bg_grad_color(page2, lv_color_hex(0xfbc2eb), 0);
+    lv_obj_set_style_bg_grad_dir(page2, LV_GRAD_DIR_HOR, 0);
     lv_obj_center(page2);
     lv_obj_set_size(page2, LV_HOR_RES, LV_VER_RES);
 
@@ -462,7 +463,7 @@ void panel2(lv_obj_t *scr) {
     //
     humidityN_obj = lv_label_create(page2);
     lv_obj_set_style_text_font(humidityN_obj, &number_24px, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(humidityN_obj, lv_color_hex(0x66CDAA), 0);
+    lv_obj_set_style_text_color(humidityN_obj, lv_color_hex(0x667eea), 0);
     lv_obj_set_pos(humidityN_obj, 200, 50 + 44);
     // lv_label_set_text(humidityN_obj, "40%");
 
@@ -526,10 +527,12 @@ static void display_switch_event_handler(lv_event_t *e) {
         if (lv_obj_has_state(obj, LV_STATE_CHECKED)) {
 #ifdef IDF_VER
             gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 0);
+            is_diplay = 1;
 #endif
         } else {
 #ifdef IDF_VER
             gpio_set_level(EXAMPLE_PIN_NUM_BK_LIGHT, 1);
+            is_diplay = 0;
 #endif
         }
     }
@@ -607,7 +610,7 @@ void panel3(lv_obj_t *scr) {
 
     lv_obj_t *btn2 = lv_btn_create(page3);
     lv_obj_add_event_cb(btn2, sync_weather_event_handler, LV_EVENT_ALL, NULL);
-    lv_obj_align(btn2, LV_ALIGN_RIGHT_MID, -20, 20);
+    lv_obj_align(btn2, LV_ALIGN_RIGHT_MID, -20, 45);
 
     label_weather = lv_label_create(btn2);
     lv_label_set_text(label_weather, "Sync Weather");
@@ -629,6 +632,7 @@ void panel3(lv_obj_t *scr) {
 #endif
     ) {
         lv_obj_add_state(display_sw, LV_STATE_CHECKED);
+        is_diplay = 1;
     }
     lv_obj_add_event_cb(display_sw, display_switch_event_handler, LV_EVENT_ALL, NULL);
 

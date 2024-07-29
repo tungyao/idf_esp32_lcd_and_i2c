@@ -97,7 +97,7 @@ static void aht20_read_data() {
             temperature = temperature - (tsens_value / 10) - 1;
         }
         if (get_disp()) {
-            temperature--;
+            temperature -= 1.1;
         }
     }
     // temperature = t - 0.9 * (tsens_value - t);
@@ -197,7 +197,6 @@ void task_lvgl(void *pvParameters) {
 void task_listen_key(void *pv) {
     listen_config_key();
 }
-
 
 
 void task_bat(void *pv) {
