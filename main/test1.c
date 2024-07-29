@@ -231,11 +231,12 @@ void task_time(void *pv) {
     setenv("TZ", "CST-8", 1);
     tzset();
     while (1) {
-        ESP_LOGI(TAG, "sntp status %d", esp_sntp_get_sync_status());
         if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
             time_t rawtime;
             time(&rawtime);
             struct tm *timeinfo = localtime(&rawtime);
+            ESP_LOGI("TIME", "%d-%d-%d %d:%d:%d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1,
+                     timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
             update_time(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
         }
         s1;

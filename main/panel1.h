@@ -152,6 +152,7 @@ void update_bat(int b);
 static lv_obj_t* led_obj;
 static lv_obj_t* time_obj;
 static lv_obj_t* bat_obj;
+static lv_obj_t* bat_obj_test;
 static lv_obj_t* temp_obj;
 static lv_obj_t* weather_ch_obj;
 static lv_obj_t* feels_like_obj;

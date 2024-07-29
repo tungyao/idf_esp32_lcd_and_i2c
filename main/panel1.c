@@ -401,8 +401,12 @@ void panel1(lv_obj_t *scr) {
     update_time(0, 0, 0);
     lv_obj_set_pos(time_obj, 40, 5);
     bat_obj = lv_bar_create(lv_scr_act());
+    bat_obj_test = lv_label_create(lv_scr_act());
+
     lv_obj_set_size(bat_obj, 65, 4);
     lv_obj_set_pos(bat_obj, 40, 25);
+    lv_obj_set_pos(bat_obj_test, 120, 4);
+    lv_label_set_text(bat_obj_test, "0");
     meter1(page1);
 }
 
@@ -543,16 +547,13 @@ static void sync_time_event_handler(lv_event_t *e) {
 
     if (code == LV_EVENT_CLICKED) {
 #ifdef IDF_VER
-        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        esp_sntp_setservername(0, "223.5.5.5");
-        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
         if (esp_sntp_enabled()) {
-            esp_sntp_stop();
+            return;
         }
-        ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
-        if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
-            ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
-        }
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "ntp1.aliyun.com");
+        esp_sntp_init();
+        esp_sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
 #endif
     }
 }
@@ -650,6 +651,7 @@ void update_time(int h, int m, int s) {
 
 void update_bat(int b) {
     lv_bar_set_value(bat_obj, b, LV_ANIM_OFF);
+    lv_label_set_text_fmt(bat_obj_test, "%d", b);
 }
 
 void set_weather(char *data) {

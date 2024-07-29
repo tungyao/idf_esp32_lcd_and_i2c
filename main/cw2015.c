@@ -15,7 +15,7 @@ static float convert_voltage(uint16_t voltage_raw) {
 
 esp_err_t read_cw2015_battery_quantity(int *quantity) {
     uint8_t data[2];
-    data[0] = readRegister(CW_VERSION);
+    data[0] = readRegister(CW_SOC);
     *quantity = data[0];
     return 0;
 }

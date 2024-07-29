@@ -360,15 +360,9 @@ void start_wifi(void *pv) {
         }
     }
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, "223.5.5.5");
-    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
-    if (esp_sntp_enabled()) {
-        esp_sntp_stop();
-    }
-    ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
-    if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000)) != ESP_OK) {
-        ESP_LOGI("PANEL", "Failed to update system time within 10s timeout");
-    }
+    esp_sntp_setservername(0, "ntp1.aliyun.com");
+    esp_sntp_init();
+    esp_sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
     tcp_client2();
     vTaskDelete(NULL);
 }
