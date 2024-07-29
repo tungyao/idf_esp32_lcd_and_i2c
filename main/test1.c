@@ -42,6 +42,8 @@ static const char *TAG = "test1";
 #define AHT20_PIN  12
 #include "panel1.h"
 #include "sto.h"
+static int bat;
+static float batF;
 
 void task_aht20(void *pvParameters);
 
@@ -150,10 +152,10 @@ void app_main(void) {
 
 
     xTaskCreate(task_lvgl, "lvgl", 80960, scr, 1,NULL);
-    xTaskCreate(task_aht20, "aht20", 4096,NULL, 10,NULL);
+    xTaskCreate(task_aht20, "aht20", 4096,NULL, 15,NULL);
     // xTaskCreate(task_listen_key, "listen", 4096,NULL, 1,NULL);
-    xTaskCreate(listen_uart, "uart", 4096,NULL, 24,NULL);
-    // xTaskCreate(task_bat, "bat", 1024,NULL, 24,NULL);
+    xTaskCreate(listen_uart, "uart", 4096,NULL, 20,NULL);
+    xTaskCreate(task_bat, "bat", 2048,NULL, 24,NULL);
     xTaskCreate(task_time, "time", 4096,NULL, 15,NULL);
     // task_conn(NULL);
 }
@@ -173,7 +175,7 @@ void task_lvgl(void *pvParameters) {
     panel1(pvParameters);
     init_sim();
     set_weather(
-        "{\"temp\":36,\"feelsLike\":37,\"text\":\"多云\",\"text_icon\":1,\"humidity\":45,\"vis\":30,\"cloud\":100}");
+        "{\"temp\":0,\"feelsLike\":0,\"text\":\"晴\",\"text_icon\":1,\"humidity\":0,\"vis\":0,\"cloud\":0}");
     while (1) {
         // lv_label_set_text_fmt(temp_label, "%-5s:  %2.2f deg", "temp", temperature);
         // lv_label_set_text_fmt(humid_label, "%-5s: %2.2f %%", "humidity", humidity);
@@ -197,13 +199,30 @@ void task_listen_key(void *pv) {
 }
 
 
-static uint32_t bat;
 
 void task_bat(void *pv) {
+    uint8_t a[2];
+    a[0] = CW_MODE;
+    a[1] = 0x00;
+    vTaskDelay(pdMS_TO_TICKS(100));
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    //添加各种子数据帧
+    i2c_master_start(cmd); //起始信号
+    i2c_master_write_byte(cmd, (CW_ADDR << 1) | I2C_MASTER_WRITE, 1); //从机地址及读写位
+    i2c_master_write(cmd, a, 2, 1); //数据位(数组)
+    i2c_master_stop(cmd); //终止信号
+    //向I2C_NUM_0 发送这个数据帧，timeout设置为1000毫秒
+    i2c_master_cmd_begin(0, cmd, 1000 / portTICK_PERIOD_MS);
+    //删除i2c_cmd_handle_t对象，释放资源
+    i2c_cmd_link_delete(cmd);
+    vTaskDelay(pdMS_TO_TICKS(200));
+
     while (1) {
         read_cw2015_battery_quantity(&bat);
         // update_bat(bat);
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        ESP_LOGI("BAT", "%d", bat);
+        update_bat(bat);
+        vTaskDelay(pdMS_TO_TICKS(8000));
     }
 }
 
