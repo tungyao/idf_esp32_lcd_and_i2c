@@ -61,6 +61,16 @@ uint8_t get_input_mode() {
     return input_mode;
 }
 
+void stop_wifi() {
+    if (wifi_conned) {
+        vTaskDelete(wifi_task_handler);
+        esp_wifi_stop();
+        esp_wifi_deinit();
+        set_wifi_conn(0);
+        wifi_task_handler = NULL;
+    }
+}
+
 void listen_config_key() {
     input_mode = 0;
     uint32_t gpio_num;
@@ -359,10 +369,24 @@ void start_wifi(void *pv) {
             }
         }
     }
+    set_wifi_conn(1);
+    update_sntp_time();
+    tcp_client2();
+    vTaskDelete(NULL);
+}
+
+void update_sntp_time() {
+    if (get_sntp_status()) {
+        return;
+    }
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, "ntp1.aliyun.com");
     esp_sntp_init();
     esp_sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
-    tcp_client2();
-    vTaskDelete(NULL);
+    esp_sntp_stop();
+    sntp_time_status = 1;
+}
+
+uint8_t get_sntp_status() {
+    return sntp_time_status;
 }

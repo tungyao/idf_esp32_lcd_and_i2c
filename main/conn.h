@@ -97,7 +97,7 @@ void listen_uart(void *arg);
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
-static TaskHandle_t wifi_task_handler;
+static TaskHandle_t wifi_task_handler = NULL;
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -109,15 +109,16 @@ static int wifi_conned = 0;
 static int s_retry_num = 0;
 
 void set_wifi_conn(int i);
-
+void stop_wifi();
 int get_wifi_conn();
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data);
 
 void wifi_init_sta(char *ssid, char *pwd);
-
-
+void update_sntp_time();
+static uint8_t sntp_time_status = 0;
+uint8_t get_sntp_status();
 // MQTT
 
 #include "mqtt_client.h"

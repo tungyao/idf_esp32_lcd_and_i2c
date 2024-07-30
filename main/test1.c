@@ -230,15 +230,24 @@ void task_time(void *pv) {
 
     setenv("TZ", "CST-8", 1);
     tzset();
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    char strftime_buf[64];
     while (1) {
-        if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
-            time_t rawtime;
-            time(&rawtime);
-            struct tm *timeinfo = localtime(&rawtime);
-            ESP_LOGI("TIME", "%d-%d-%d %d:%d:%d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1,
-                     timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-            update_time(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+        if (get_sntp_status()) {
+            time(&now);
+
+            // Set timezone to China Standard Time
+            setenv("TZ", "CST-8", 1);
+            tzset();
+            localtime_r(&now, &timeinfo);
+            strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+            update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            s1;
+        } else {
+            s5;
         }
-        s1;
     }
 }

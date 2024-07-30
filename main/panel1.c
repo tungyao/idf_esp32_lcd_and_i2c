@@ -515,9 +515,7 @@ static void wifi_switch_event_handler(lv_event_t *e) {
 #endif
         } else {
 #ifdef IDF_VER
-            esp_wifi_stop();
-            esp_wifi_deinit();
-            set_wifi_conn(0);
+            stop_wifi();
             ESP_LOGI("PANEL", "deinit wifi");
 #endif
         }
@@ -550,10 +548,7 @@ static void sync_time_event_handler(lv_event_t *e) {
         if (esp_sntp_enabled()) {
             return;
         }
-        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        esp_sntp_setservername(0, "ntp1.aliyun.com");
-        esp_sntp_init();
-        esp_sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
+        update_sntp_time();
 #endif
     }
 }
@@ -563,7 +558,9 @@ static void sync_weather_event_handler(lv_event_t *e) {
 
     if (code == LV_EVENT_CLICKED) {
 #ifdef IDF_VER
-        tcp_client2();
+        if (get_wifi_conn()) {
+            tcp_client2();
+        }
 #endif
     }
 }
