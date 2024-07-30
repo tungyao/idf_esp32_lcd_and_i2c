@@ -63,8 +63,8 @@ uint8_t get_input_mode() {
 
 void stop_wifi() {
     if (wifi_conned) {
-        vTaskDelete(wifi_task_handler);
-        esp_wifi_stop();
+        ESP_LOGI("stop_wifi", "stop wifi");
+        // esp_wifi_stop();
         esp_wifi_deinit();
         set_wifi_conn(0);
         wifi_task_handler = NULL;
@@ -379,12 +379,20 @@ void update_sntp_time() {
     if (get_sntp_status()) {
         return;
     }
-    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, "ntp1.aliyun.com");
-    esp_sntp_init();
+    // ESP_ERROR_CHECK(esp_netif_init());
+    // ESP_ERROR_CHECK( esp_event_loop_create_default() );
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("ntp1.aliyun.com");
+    config.start = false;                       // start SNTP service explicitly (after connecting)
+    config.server_from_dhcp = true;             // accept NTP offers from DHCP server, if any (need to enable *before* connecting)
+    config.renew_servers_after_new_IP = true;   // let esp-netif update configured SNTP server(s) after receiving DHCP lease
+    config.index_of_first_server = 1;           // updates from server num 1, leaving server 0 (from DHCP) intact
+    config.ip_event_to_renew = IP_EVENT_STA_GOT_IP;
     esp_sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
-    esp_sntp_stop();
+    esp_netif_sntp_init(&config);
+    esp_netif_sntp_start();
     sntp_time_status = 1;
+    esp_netif_sntp_deinit();
+
 }
 
 uint8_t get_sntp_status() {

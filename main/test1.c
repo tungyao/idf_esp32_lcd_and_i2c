@@ -149,7 +149,7 @@ void app_main(void) {
         .i2c_addr = AHT20_ADDRRES_0,
     };
     aht20_new_sensor(&i2c_conf, &aht20);
-
+    cw_2015_start();
 
     xTaskCreate(task_lvgl, "lvgl", 80960, scr, 1,NULL);
     xTaskCreate(task_aht20, "aht20", 4096,NULL, 15,NULL);
@@ -217,8 +217,7 @@ void task_bat(void *pv) {
 void task_time(void *pv) {
     // 将时区设置为中国标准时间
 
-    setenv("TZ", "CST-8", 1);
-    tzset();
+
     time_t now;
     struct tm timeinfo;
     time(&now);
@@ -230,7 +229,6 @@ void task_time(void *pv) {
 
             // Set timezone to China Standard Time
             setenv("TZ", "CST-8", 1);
-            tzset();
             localtime_r(&now, &timeinfo);
             strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
             update_time(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
