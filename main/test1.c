@@ -200,20 +200,9 @@ void task_listen_key(void *pv) {
 
 
 void task_bat(void *pv) {
-    uint8_t a[2];
-    a[0] = CW_MODE;
-    a[1] = 0x00;
+
     vTaskDelay(pdMS_TO_TICKS(100));
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    //添加各种子数据帧
-    i2c_master_start(cmd); //起始信号
-    i2c_master_write_byte(cmd, (CW_ADDR << 1) | I2C_MASTER_WRITE, 1); //从机地址及读写位
-    i2c_master_write(cmd, a, 2, 1); //数据位(数组)
-    i2c_master_stop(cmd); //终止信号
-    //向I2C_NUM_0 发送这个数据帧，timeout设置为1000毫秒
-    i2c_master_cmd_begin(0, cmd, 1000 / portTICK_PERIOD_MS);
-    //删除i2c_cmd_handle_t对象，释放资源
-    i2c_cmd_link_delete(cmd);
+    cw_2015_start();
     vTaskDelay(pdMS_TO_TICKS(200));
 
     while (1) {

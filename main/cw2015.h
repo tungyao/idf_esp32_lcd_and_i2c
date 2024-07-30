@@ -17,8 +17,18 @@
 #define CW_CONFIG     0x08
 #define CW_MODE       0x0a
 #define byte uint8_t
+
+void cw_2015_start();
+
 esp_err_t read_cw2015_battery_quantity(int *quantity);
+
 void readAnalogVoltage(float *q);
+
 uint8_t readRegister(uint8_t reg);
-uint8_t cw_release_alrt_pin(void);    //释放alrt pin,触发低电量中断后必须调用
+
+void i2c_write(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);
+
+void i2c_read(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);
+
+uint8_t cw_release_alrt_pin(void); //释放alrt pin,触发低电量中断后必须调用
 #endif //CW2015_H
