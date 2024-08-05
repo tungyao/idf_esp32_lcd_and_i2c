@@ -39,6 +39,20 @@ void cw_2015_start() {
     i2c_write(CW_ADDR, CW_MODE, a, 1);
 }
 
+void cw_2015_low_power_reset() {
+    uint8_t a[1];
+
+    int8_t ret = 0;
+    uint8_t reg_val;
+    i2c_read(CW_ADDR,CW_RRT_ALET, a, 1);
+    if (a[0]) {
+        return;
+    }
+    a[0] = a[0] & 0x80;
+    a[0] = a[0] & 0x7f;
+    i2c_write(CW_ADDR, CW_RRT_ALET, a, 1);
+}
+
 esp_err_t read_cw2015_battery_quantity(int *quantity) {
     // uint8_t data[2];
     // data[0] = readRegister(CW_SOC);

@@ -46,6 +46,9 @@ static const char *TAG = "test1";
 static int bat;
 static float batF;
 
+// alert
+#define ALERT_PIN 11
+
 void task_aht20(void *pvParameters);
 
 void task_lvgl(void *pvParameters);
@@ -54,7 +57,7 @@ void task_listen_key(void *pv);
 
 
 void task_time(void *pv);
-
+void task_cw2015_read(void *arg);
 static esp_err_t i2c_master_init(void) {
     int i2c_master_port = I2C_MASTER_NUM;
 
@@ -121,10 +124,19 @@ void app_main(void) {
 
     gpio_config_t aht20_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = 1,
         .pin_bit_mask = 1ULL << AHT20_PIN
     };
     ESP_ERROR_CHECK(gpio_config(&aht20_gpio_config));
     gpio_set_level(AHT20_PIN, 1);
+
+    // init low power pin
+    gpio_config_t low_power_alter_conf = {
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = 1ULL << ALERT_PIN
+    };
+    ESP_ERROR_CHECK(gpio_config(&low_power_alter_conf));
+
 
     init_lcd();
     lv_obj_t *scr = lv_disp_get_scr_act(get_disp());
@@ -158,6 +170,7 @@ void app_main(void) {
     xTaskCreate(listen_uart, "uart", 4096,NULL, 20,NULL);
     xTaskCreate(task_bat, "bat", 2048,NULL, 24,NULL);
     xTaskCreate(task_time, "time", 4096,NULL, 15,NULL);
+    xTaskCreate(task_cw2015_read, "cw2015_reset", 4096,NULL, 23,NULL);
     // task_conn(NULL);
 }
 
@@ -237,5 +250,14 @@ void task_time(void *pv) {
         } else {
             s5;
         }
+    }
+}
+
+void task_cw2015_read(void *arg) {
+    while (1) {
+        if (gpio_get_level(ALERT_PIN)) {
+            cw_2015_low_power_reset();
+        }
+        vTaskDelay(pdMS_TO_TICKS(60000));
     }
 }

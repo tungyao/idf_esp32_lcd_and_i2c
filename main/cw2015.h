@@ -19,7 +19,7 @@
 #define byte uint8_t
 
 void cw_2015_start();
-
+void cw_2015_low_power_reset();
 esp_err_t read_cw2015_battery_quantity(int *quantity);
 
 void readAnalogVoltage(float *q);
