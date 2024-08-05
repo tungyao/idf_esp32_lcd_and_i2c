@@ -29,6 +29,7 @@ idf_component_register(SRCS
         "weather_big/wi_hurricane.c"
         "weather_big/wi_windsock.c"
         "weather_big/wi_partly_cloudy_day_rain.c"
+        "sleep.c"
         "tcp_client.c"
         "conn.c"
         "panel1.c"

@@ -5,6 +5,26 @@
 
 #include <string.h>
 
+int voltageToPercentage(float voltage) {
+    // 定义满电和最低电压
+    const float FULL_VOLTAGE = 3.7; // 满电电压
+    const float MIN_VOLTAGE = 3.3; // 最低电压
+
+    // 计算电压范围
+    float voltageRange = FULL_VOLTAGE - MIN_VOLTAGE;
+
+    // 防止电压超出合理范围
+    if (voltage > FULL_VOLTAGE) {
+        voltage = FULL_VOLTAGE;
+    } else if (voltage < MIN_VOLTAGE) {
+        voltage = MIN_VOLTAGE;
+    }
+
+    // 计算电量百分比
+    int percentage = (int) (((voltage - MIN_VOLTAGE) / voltageRange) * 100);
+
+    return percentage;
+}
 
 static const char *TAG = "CW2015_EXAMPLE";
 // 转换电压值到实际电压
@@ -20,9 +40,13 @@ void cw_2015_start() {
 }
 
 esp_err_t read_cw2015_battery_quantity(int *quantity) {
-    uint8_t data[2];
-    data[0] = readRegister(CW_SOC);
-    *quantity = data[0];
+    // uint8_t data[2];
+    // data[0] = readRegister(CW_SOC);
+    // 阈值是3.3v 满电是3.7v
+    float a;
+
+    readAnalogVoltage(&a);
+    *quantity = voltageToPercentage(a);
     return 0;
 }
 
