@@ -214,7 +214,7 @@ void task_listen_key(void *pv) {
 
 
 void task_bat(void *pv) {
-    deep_sleep_register_gpio_wakeup();
+    // deep_sleep_register_gpio_wakeup();
     vTaskDelay(pdMS_TO_TICKS(100));
     cw_2015_start();
     vTaskDelay(pdMS_TO_TICKS(200));
