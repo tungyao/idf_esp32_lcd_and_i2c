@@ -7,8 +7,8 @@
 
 int voltageToPercentage(float voltage) {
     // 定义满电和最低电压
-    const float FULL_VOLTAGE = 3.7; // 满电电压
-    const float MIN_VOLTAGE = 3.3; // 最低电压
+    const float FULL_VOLTAGE = 4.2; // 满电电压
+    const float MIN_VOLTAGE = 3.7; // 最低电压
 
     // 计算电压范围
     float voltageRange = FULL_VOLTAGE - MIN_VOLTAGE;
